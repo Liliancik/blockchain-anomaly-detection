@@ -1,44 +1,55 @@
-# blockchain-anomaly-detection
-# Blockchain-Enabled Anomaly Detection in Educational Data with Autoencoders
+﻿# blockchain-anomaly-detection
 
 ## Overview
-This project explores how autoencoders can be used to detect anomalies in student learning data (e.g., assessment scores, engagement logs, or progress metrics) while leveraging blockchain-inspired mechanisms to ensure traceable, immutable datasets. The goal is to validate how secure data provenance can help prevent tampering in machine learning inputs and strengthen trust in anomaly detection outcomes for education.
 
-## Objectives
-- **Implement an autoencoder-based anomaly detector** for educational performance logs.
-- **Validate the system on synthetic data**, demonstrating reconstruction error as an anomaly signal.
-- **Simulate blockchain integration** (e.g., Hyperledger Fabric style ledger) to ensure data traceability.
-- **Discuss ethics and data ownership**, including student privacy and consent.
+This project explores anomaly detection in student performance data with an emphasis on traceability and tamper-resistance using a blockchain-inspired ledger. It provides a lightweight scaffold to inject anomalies into datasets, detect them with a model, and record detection events in an append-only ledger for auditability.
 
-## Methodology (Scoped)
-1. **Focused literature review** on ML + blockchain in education.
-2. **Autoencoder training (Keras)** on synthetic or anonymized datasets.
-3. **Blockchain logging simulation** to record immutable dataset entries and hashes.
-4. **Evaluation** using reconstruction error metrics and anomaly thresholds.
-5. **Ethical analysis** covering governance, ownership, and risks of misuse.
+## Quick Start
 
-## Expected Outcomes
-- A **secure anomaly detection prototype** for educational data.
-- Demonstration of **fraud/tamper resistance** in ML inputs via blockchain logging.
-- A thesis/report with **use cases for personalized learning systems** and integrity guarantees.
+1. Place your dataset at `data/StudentPerformanceFactors.csv`. The `data/` folder is ignored by git by default.
 
-## Project Structure (Planned)
+2. (Optional) Create and activate a virtual environment, then install dependencies:
+
+```powershell
+python -m venv .venv; .\\.venv\\Scripts\\Activate.ps1
+pip install -r requirements/requirements.txt
+```
+
+3. Run the pipeline (default uses `data/StudentPerformanceFactors.csv`):
+
+```powershell
+python scripts/run_pipeline.py --data data/StudentPerformanceFactors.csv --method noise --frac 0.01 --push-outputs
+```
+
+## What I added (scaffold)
+
+- `src/data_loader.py` — CSV loader
+- `src/preprocessing.py` — missing value handling, encoding, normalization
+- `src/anomaly_injection.py` — anomaly injection helpers (noise, swap)
+- `src/autoencoder_model.py` — Isolation Forest wrapper for anomaly detection
+- `src/blockchain_logger.py` — simple append-only JSONL ledger with hashing
+- `scripts/run_pipeline.py` — end-to-end runner script
+
+## Notes
+
+- `blockchain_ledger.jsonl` is a local, append-only file used to simulate a ledger. For production replace the logging with a real blockchain or secure audit service.
+- Keep large or sensitive datasets in `data/` and do not commit them to git.
+
+## Project Structure
+
 ```
 .
-├── data/                 # Synthetic datasets and logs
-├── notebooks/            # Experiments and evaluation
-├── src/                  # Autoencoder + blockchain simulation
-└── README.md             # Project overview
+├── data/                 # Large datasets (gitignored)
+├── requirements/         # Requirements files
+├── scripts/              # Runner scripts
+├── src/                  # Core modules (loader, preprocessing, injection, detection, logging)
+└── README.md             # This file
 ```
 
-## Ethics & Data Ownership
-Educational data is highly sensitive. This project emphasizes:
-- **Privacy**: anonymization and minimal data exposure.
-- **Consent**: clear ownership and usage rights for student records.
-- **Transparency**: blockchain logging to ensure trust in dataset provenance.
+## Next steps
 
-## Status
-This is an early-stage research prototype focused on core implementation and evaluation.
+- Upload `StudentPerformanceFactors.csv` into the `data/` folder and tell me to run the pipeline; I will execute the notebook or script here, save outputs, and push the notebook with outputs so GitHub renders results.
 
 ## License
-TBD (add appropriate license once repository requirements are finalized).
+
+TBD

@@ -13,20 +13,25 @@ import numpy as np
 
 
 def run(path: str, injection_method: str = "noise", frac: float = 0.01, push_outputs: bool = False):
+    # Load and preprocess clean data (train on clean)
     df = load_data(path)
     df = prep.handle_missing(df)
     df_encoded, _ = prep.encode_categorical(df)
     X_df, _ = prep.select_features(df_encoded)
-    scaler, X_scaled = prep.normalize_features(X_df)
 
-    # Inject anomalies
-    df_injected, anomaly_indices = inject_anomalies(X_df, method=injection_method, frac=frac)
+    # Fit scaler on clean data and get training matrix
+    scaler, X_train_scaled = prep.normalize_features(X_df)
 
-    # Normalize injected
-    _, X_injected_scaled = prep.normalize_features(df_injected)
+    # Create injected test set (copy of features) and record ground truth indices
+    df_injected, anomaly_indices = inject_anomalies(X_df.copy(), method=injection_method, frac=frac)
 
-    # Train detector on injected data (for demonstration we train on full set)
-    clf = train_detector(X_injected_scaled)
+    # Use the same scaler (do NOT fit on injected data)
+    X_injected_scaled = scaler.transform(df_injected)
+
+    # Train detector on CLEAN training data
+    clf = train_detector(X_train_scaled)
+
+    # Score and predict on injected (test) data
     scores = score_anomalies(clf, X_injected_scaled)
     preds = predict_anomalies(clf, X_injected_scaled)
 

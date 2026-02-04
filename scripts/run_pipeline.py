@@ -29,11 +29,11 @@ def run(path: str, injection_method: str = "noise", frac: float = 0.01, push_out
     X_injected_scaled = scaler.transform(df_injected)
 
     # Train detector on CLEAN training data
-    clf = train_detector(X_train_scaled)
+    model, threshold = train_detector(X_train_scaled, contamination=frac)
 
-    # Score and predict on injected (test) data
-    scores = score_anomalies(clf, X_injected_scaled)
-    preds = predict_anomalies(clf, X_injected_scaled)
+    scores = score_anomalies(model, X_injected_scaled)
+    preds = predict_anomalies(model, X_injected_scaled, threshold)
+
 
     anomalies = [int(i) for i, p in enumerate(preds) if p == -1]
 
@@ -42,7 +42,7 @@ def run(path: str, injection_method: str = "noise", frac: float = 0.01, push_out
 
     # Log detected anomalies to the ledger
     for idx in anomalies:
-        entry = log_anomaly(int(idx), {"detected_by": "isolation_forest", "score": float(scores[idx])})
+        entry = log_anomaly(int(idx), {"detected_by": "autoencoder", "score": float(scores[idx])})
         print(f"Logged anomaly {idx} -> hash: {entry['hash']}")
 
     # Optionally save outputs

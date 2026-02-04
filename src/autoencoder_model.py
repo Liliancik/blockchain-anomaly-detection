@@ -5,42 +5,56 @@ from tensorflow import keras
 from tensorflow.keras import layers
 
 
-def build_autoencoder(input_dim: int, bottleneck_dim: int = 8) -> keras.Model:
+def build_autoencoder(input_dim: int, bottleneck_dim: int = 16) -> keras.Model:
     """
-    Simple dense autoencoder for tabular data.
+    Improved deep dense autoencoder for tabular data with dropout regularization.
+    Architecture: input → 128 → 64 → 32 → bottleneck → 32 → 64 → 128 → output
     Reconstruction loss: MSE
     """
     inp = keras.Input(shape=(input_dim,))
 
-    # Encoder
-    x = layers.Dense(64, activation="relu")(inp)
+    # Encoder with dropout
+    x = layers.Dense(128, activation="relu")(inp)
+    x = layers.Dropout(0.2)(x)
+    x = layers.Dense(64, activation="relu")(x)
+    x = layers.Dropout(0.2)(x)
     x = layers.Dense(32, activation="relu")(x)
+    x = layers.Dropout(0.1)(x)
     bottleneck = layers.Dense(bottleneck_dim, activation="relu")(x)
 
-    # Decoder
+    # Decoder with dropout
     x = layers.Dense(32, activation="relu")(bottleneck)
+    x = layers.Dropout(0.1)(x)
     x = layers.Dense(64, activation="relu")(x)
+    x = layers.Dropout(0.2)(x)
+    x = layers.Dense(128, activation="relu")(x)
+    x = layers.Dropout(0.2)(x)
     out = layers.Dense(input_dim, activation="linear")(x)
 
     model = keras.Model(inputs=inp, outputs=out)
-    model.compile(optimizer=keras.optimizers.Adam(learning_rate=1e-3), loss="mse")
+    model.compile(optimizer=keras.optimizers.Adam(learning_rate=5e-4), loss="mse")
     return model
 
 
 def train_detector(
     X_train: np.ndarray,
     contamination: float = 0.02,
-    bottleneck_dim: int = 8,
-    epochs: int = 50,
-    batch_size: int = 32,
-    val_split: float = 0.1,
+    bottleneck_dim: int = 16,
+    epochs: int = 150,
+    batch_size: int = 16,
+    val_split: float = 0.15,
     random_state: int = 42,
 ):
     """
-    Train autoencoder on (assumed) normal data.
+    Train improved autoencoder on (assumed) normal data.
+    - Deeper architecture (128→64→32→bottleneck→32→64→128)
+    - Dropout regularization to prevent overfitting
+    - More epochs for better convergence
+    - Smaller batch size for more frequent updates
+    
     Returns:
-      - model
-      - threshold on reconstruction error based on (1 - contamination) quantile of TRAIN errors
+      - model: trained autoencoder
+      - threshold: reconstruction error threshold based on (1 - contamination) quantile
     """
     # Reproducibility (best effort)
     np.random.seed(random_state)
@@ -52,8 +66,16 @@ def train_detector(
     callbacks = [
         keras.callbacks.EarlyStopping(
             monitor="val_loss",
+            patience=10,
+            restore_best_weights=True,
+            min_delta=1e-5
+        ),
+        keras.callbacks.ReduceLROnPlateau(
+            monitor="val_loss",
+            factor=0.5,
             patience=5,
-            restore_best_weights=True
+            min_lr=1e-6,
+            verbose=0
         )
     ]
 

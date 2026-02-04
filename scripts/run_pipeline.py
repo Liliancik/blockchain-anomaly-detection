@@ -1,16 +1,16 @@
 """Run end-to-end pipeline: load data, preprocess, split, inject anomalies, tune threshold, detect, log to ledger."""
 import argparse
 import json
+import sys
 from pathlib import Path
-import pandas as pd
-from typing import List
+from typing import List, Dict, Any
 
 import numpy as np
+import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import precision_score, recall_score, f1_score
 
-import sys
-
+# Ensure project root is importable when running as: python scripts/run_pipeline.py
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
@@ -22,58 +22,47 @@ from src.blockchain_logger import log_anomaly
 
 
 def make_labels(n: int, anomaly_indices: List[int]) -> np.ndarray:
-    """y: 1=anomaly, 0=normal"""
+    """Binary labels: 1=anomaly, 0=normal (indices are 0..n-1 positions)."""
     y = np.zeros(n, dtype=int)
-    if len(anomaly_indices) > 0:
+    if anomaly_indices:
         y[np.array(anomaly_indices, dtype=int)] = 1
     return y
 
 
-def tune_threshold_precision_first(
+def tune_threshold_best_f1(
     errors: np.ndarray,
     y_true: np.ndarray,
-    min_recall: float = 0.85,
     q_low: float = 0.05,
     q_high: float = 0.999,
-    n_grid: int = 250,
-):
+    n_grid: int = 400,
+) -> Dict[str, float]:
     """
-    Choose threshold t that maximizes PRECISION subject to RECALL >= min_recall.
-    If no threshold meets the recall constraint, fall back to best F1.
-
+    Choose threshold that maximizes F1 on validation.
     errors: reconstruction errors (higher => more anomalous)
     y_true: 1=anomaly, 0=normal
     """
     qs = np.linspace(q_low, q_high, n_grid)
     thresholds = np.quantile(errors, qs)
 
-    best = None
-    best_fallback = {"threshold": None, "precision": 0.0, "recall": 0.0, "f1": 0.0}
+    best = {"threshold": float(thresholds[0]), "precision": 0.0, "recall": 0.0, "f1": 0.0}
 
     for t in thresholds:
         y_pred = (errors > t).astype(int)
-
         p = precision_score(y_true, y_pred, zero_division=0)
         r = recall_score(y_true, y_pred, zero_division=0)
         f = f1_score(y_true, y_pred, zero_division=0)
 
-        # fallback: maximize F1 regardless of recall constraint
-        if f > best_fallback["f1"]:
-            best_fallback = {"threshold": float(t), "precision": float(p), "recall": float(r), "f1": float(f)}
+        if f > best["f1"]:
+            best = {"threshold": float(t), "precision": float(p), "recall": float(r), "f1": float(f)}
 
-        # precision-first (with recall constraint)
-        if r >= min_recall:
-            if best is None or p > best["precision"] or (p == best["precision"] and f > best["f1"]):
-                best = {"threshold": float(t), "precision": float(p), "recall": float(r), "f1": float(f)}
-
-    return best if best is not None else best_fallback
+    return best
 
 
 def run(
     path: str,
     injection_method: str = "noise",
     frac: float = 0.02,
-    min_recall: float = 0.85,
+    noise_scale: float = 5.0,
     push_outputs: bool = False,
 ):
     # 1) Load + preprocess
@@ -89,50 +78,49 @@ def run(
     # 3) Fit scaler on TRAIN only
     scaler, X_train_scaled = prep.normalize_features(X_train)
 
-    # 4) Train autoencoder on TRAIN only (assumed normal)
-    model, _ = train_detector(X_train_scaled, contamination=frac)
+    # 4) Train autoencoder on TRAIN only
+    # If your AE supports bottleneck_dim, this helps reduce over-reconstruction:
+    try:
+        model, _ = train_detector(X_train_scaled, contamination=frac, bottleneck_dim=4)
+    except TypeError:
+        model, _ = train_detector(X_train_scaled, contamination=frac)
 
-    # 5) Inject anomalies into VALIDATION and tune threshold
-    # --- Inject anomalies in SCALED space (recommended) ---
+    # 5) VALIDATION: inject anomalies in SCALED space for stable strength
     X_val_scaled = scaler.transform(X_val)
-
     X_val_scaled_df = pd.DataFrame(X_val_scaled)
-    X_val_injected_scaled_df, val_anom_idx = inject_anomalies(
+
+    X_val_inj_df, val_anom_idx = inject_anomalies(
         X_val_scaled_df.copy(),
         method=injection_method,
         frac=frac,
-        noise_scale=3.0,      # <<< stronger, in z-space
+        scale=noise_scale,     # used by noise injection; ignored by swap
     )
+    X_val_inj = X_val_inj_df.values
+    y_val = make_labels(len(X_val_inj), val_anom_idx)
 
-    X_val_injected_scaled = X_val_injected_scaled_df.values
-    y_val = make_labels(len(X_val_injected_scaled), val_anom_idx)
-
-    val_errors = score_anomalies(model, X_val_injected_scaled)
-    best = tune_threshold_precision_first(val_errors, y_val, min_recall=min_recall)
+    val_errors = score_anomalies(model, X_val_inj)
+    best = tune_threshold_best_f1(val_errors, y_val)
 
     threshold = best["threshold"]
-    print("\n--- Threshold tuning on VALIDATION ---")
+    print("\n--- Threshold tuning on VALIDATION (best F1) ---")
     print(f"Chosen threshold: {threshold:.6f}")
     print(f"Val Precision: {best['precision']:.3f} | Val Recall: {best['recall']:.3f} | Val F1: {best['f1']:.3f}")
 
-    # 6) FINAL evaluation on TEST (inject anomalies into test, evaluate once)
-    # --- Inject anomalies in SCALED space (recommended) ---
+    # 6) TEST: inject anomalies in SCALED space and evaluate ONCE
     X_test_scaled = scaler.transform(X_test)
-
     X_test_scaled_df = pd.DataFrame(X_test_scaled)
-    X_test_injected_scaled_df, test_anom_idx = inject_anomalies(
+
+    X_test_inj_df, test_anom_idx = inject_anomalies(
         X_test_scaled_df.copy(),
         method=injection_method,
         frac=frac,
-        noise_scale=5.0,      # <<< stronger, in z-space
+        scale=noise_scale,
     )
+    X_test_inj = X_test_inj_df.values
+    y_test = make_labels(len(X_test_inj), test_anom_idx)
 
-    X_test_injected_scaled = X_test_injected_scaled_df.values
-    y_test = make_labels(len(X_test_injected_scaled), test_anom_idx)
-
-    test_errors = score_anomalies(model, X_test_injected_scaled)
-
-    preds = predict_anomalies(model, X_test_injected_scaled, threshold)  # -1 anomaly, 1 normal
+    test_errors = score_anomalies(model, X_test_inj)
+    preds = predict_anomalies(model, X_test_inj, threshold)  # -1 anomaly, 1 normal
     y_pred = (preds == -1).astype(int)
 
     injected = int(np.sum(y_test == 1))
@@ -164,10 +152,10 @@ def run(
     # 8) Optionally save outputs
     if push_outputs:
         out_path = Path("pipeline_outputs.json")
-        out = {
+        out: Dict[str, Any] = {
             "method": injection_method,
             "frac": frac,
-            "min_recall_constraint": min_recall,
+            "noise_scale": noise_scale,
             "threshold": float(threshold),
             "validation_metrics": best,
             "test_metrics": {
@@ -193,8 +181,8 @@ if __name__ == "__main__":
     parser.add_argument("--data", default="data/StudentPerformanceFactors.csv", help="Path to dataset CSV")
     parser.add_argument("--method", default="noise", choices=["noise", "swap"])
     parser.add_argument("--frac", type=float, default=0.02, help="Fraction of injected anomalies")
-    parser.add_argument("--min-recall", type=float, default=0.85, help="Recall constraint for precision-first tuning")
+    parser.add_argument("--noise-scale", type=float, default=5.0, help="Noise strength in scaled space (sigma units)")
     parser.add_argument("--push-outputs", action="store_true")
     args = parser.parse_args()
 
-    run(args.data, args.method, args.frac, args.min_recall, args.push_outputs)
+    run(args.data, args.method, args.frac, args.noise_scale, args.push_outputs)

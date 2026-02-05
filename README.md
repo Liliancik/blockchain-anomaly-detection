@@ -38,15 +38,72 @@ Place your dataset at `data/StudentPerformanceFactors.csv`. The `data/` folder i
 ### 3. Run the Pipeline
 
 ```powershell
-# Default: 2% injection, noise scale 20.0
+# Default: 10% injection, noise scale 10.0
 python scripts/run_pipeline.py
 
 # Custom parameters
 python scripts/run_pipeline.py --frac 0.05 --noise-scale 15.0 --method noise
 
 # With output saving
-python scripts/run_pipeline.py --frac 0.02 --noise-scale 20.0 --push-outputs
+python scripts/run_pipeline.py --frac 0.20 --noise-scale 20.0 --push-outputs
 ```
+
+## Dataset Details
+
+### StudentPerformanceFactors.csv
+
+**Overview:**
+- **Samples**: 6,607 students
+- **Columns**: 20 total (17 features + 3 labels)
+- **File size**: ~642 KB
+
+**Features Used in Model (17 features)**
+
+| Category | Features | Count |
+|----------|----------|-------|
+| **Numeric** | Hours_Studied, Attendance, Sleep_Hours, Previous_Scores, Tutoring_Sessions, Physical_Activity, Exam_Score | 7 |
+| **Categorical (Encoded)** | Parental_Involvement, Access_to_Resources, Extracurricular_Activities, Motivation_Level, Internet_Access, Family_Income, Teacher_Quality, School_Type, Peer_Influence, Learning_Disabilities, Parental_Education_Level, Distance_from_Home, Gender | 13 |
+
+**Features NOT Used (Labels - Excluded)**
+
+| Feature | Reason |
+|---------|--------|
+| FinalGrade | Label/target variable (would leak information) |
+| PassFail | Label/target variable (would leak information) |
+| ExamResult | Label/target variable (would leak information) |
+
+### Data Processing Pipeline
+
+```
+StudentPerformanceFactors.csv (6,607 × 20)
+    ↓
+[Load Data] ..................... Read all 6,607 rows
+    ↓
+[Handle Missing Values] ........ Imputation of NaN
+    ↓
+[Encode Categorical] ........... Convert 13 categorical → numeric
+    ↓
+[Select Features] .............. Exclude 3 label columns, keep 17 features
+    ↓
+[Normalize] .................... StandardScaler (μ=0, σ=1)
+    ↓
+[Train-Test Split] ............ 75% clean (4,955), 25% injected (1,652)
+    ↓
+[Inject Anomalies] ............ Gaussian noise to 10% of test set (~165 samples)
+    ↓
+[Detect] ....................... Autoencoder reconstruction error scoring
+    ↓
+[Log to Blockchain] ........... Record all detections with SHA256 hashes
+```
+
+### Key Statistics
+
+- **Total samples used**: 6,607
+- **Training samples** (clean only): 4,955
+- **Test samples**: 1,652
+- **Test samples injected as anomalies** (10% default): ~165
+- **Model input dimensions**: 28 (after categorical encoding)
+- **Features normalized**: Yes (StandardScaler)
 
 ### 4. Generate Visualizations
 

@@ -8,7 +8,7 @@ This script creates:
  - `outputs/injected_samples.csv` : same as before, injected-only rows.
 
 Usage:
-    python scripts/visualize_injection.py --data data/StudentPerformanceFactors.csv --frac 0.02 --scale 5.0
+    python scripts/visualize_injection.py --data data/StudentPerformanceFactors.csv --frac 0.10 --scale 10.0
 """
 
 import argparse
@@ -127,8 +127,8 @@ def visualize(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--data', default='data/StudentPerformanceFactors.csv')
-    parser.add_argument('--frac', type=float, default=0.02)
-    parser.add_argument('--scale', type=float, default=5.0)
+    parser.add_argument('--frac', type=float, default=0.10)
+    parser.add_argument('--scale', type=float, default=10.0)
     parser.add_argument('--seed', type=int, default=42)
     args = parser.parse_args()
 

@@ -60,7 +60,7 @@ def compare_scales():
         # Inject anomalies with this scale
         inj_df, inj_idx = inject_anomalies(
             X_scaled_df.copy(),
-            frac=0.02,
+            frac=0.10,
             scale=scale,
             random_state=42
         )

@@ -61,7 +61,7 @@ def tune_threshold_best_f1(
 def run(
     path: str,
     injection_method: str = "noise",
-    frac: float = 0.02,
+    frac: float = 0.01,
     noise_scale: float = 5.0,
     push_outputs: bool = False,
 ):
@@ -240,8 +240,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--data", default="data/StudentPerformanceFactors.csv", help="Path to dataset CSV")
     parser.add_argument("--method", default="noise", choices=["noise", "swap"])
-    parser.add_argument("--frac", type=float, default=0.02, help="Fraction of injected anomalies")
-    parser.add_argument("--noise-scale", type=float, default=5.0, help="Noise strength in scaled space (sigma units)")
+    parser.add_argument("--frac", type=float, default=0.10, help="Fraction of injected anomalies")
+    parser.add_argument("--noise-scale", type=float, default=10.0, help="Noise strength in scaled space (sigma units)")
     parser.add_argument("--push-outputs", action="store_true")
     args = parser.parse_args()
 

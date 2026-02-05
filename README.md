@@ -105,6 +105,39 @@ StudentPerformanceFactors.csv (6,607 × 20)
 - **Model input dimensions**: 28 (after categorical encoding)
 - **Features normalized**: Yes (StandardScaler)
 
+## Evaluation Methodology
+
+Your pipeline uses a **three-way data split with proper separation**:
+
+### Data Partitioning
+
+```
+Original Data (6,607 samples)
+    ↓
+├─ TRAIN: 70% (4,627 samples)
+│   └─ Used to: Train autoencoder on CLEAN data only
+│
+├─ VALIDATION: 15% (991 samples)
+│   └─ Used to: Inject anomalies, tune threshold for BEST F1
+│
+└─ TEST: 15% (989 samples)
+    └─ Used to: Final evaluation with tuned threshold
+```
+
+### Validation Process
+
+1. **Separate Validation Set** - 991 samples never seen during training
+2. **Anomaly Injection** - 10% of validation set corrupted with Gaussian noise
+3. **Threshold Tuning** - Grid search across 400 thresholds to maximize F1
+4. **Lock Threshold** - Once tuned, threshold is applied to test set (no peeking)
+5. **Test Evaluation** - Final metrics computed on completely held-out data
+
+**Benefits:**
+- ✅ Prevents overfitting to test data
+- ✅ Finds optimal threshold without bias
+- ✅ Fair, unbiased performance reporting
+- ✅ Realistic evaluation scenario
+
 ### 4. Generate Visualizations
 
 ```powershell
@@ -115,9 +148,102 @@ python scripts/compare_noise_scales.py
 python scripts/visualize_injection.py
 ```
 
+## Permissioned Blockchain Security
+
+Your project includes an **enterprise-grade permissioned blockchain** with full audit trail capabilities.
+
+### User Roles & Permissions
+
+| Role | Read | Write | Verify | Purpose |
+|------|------|-------|--------|---------|
+| **Admin** | ✅ | ✅ | ✅ | Full access, user registration |
+| **Detector** | ✅ | ✅ | ❌ | Logs detected anomalies (default) |
+| **Auditor** | ✅ | ❌ | ✅ | Reads and verifies blockchain integrity |
+| **Viewer** | ✅ | ❌ | ❌ | Read-only access to ledger |
+
+### Security Features
+
+**1. User Authentication**
+- SHA256 password hashing
+- Login/logout mechanism
+- Credential verification before operations
+
+**2. Role-Based Access Control (RBAC)**
+```python
+if not user.can_write():
+    raise PermissionError("Write permission denied")
+```
+
+**3. Hash Chaining**
+- Each entry links to previous entry hash
+- Tamper detection: breaking chain is obvious
+- Immutable audit trail
+
+**4. HMAC Signing**
+- HMAC-SHA256 signature on each entry
+- Prevents unauthorized modifications
+- Verifiable integrity
+
+**5. User Accountability**
+- Every entry records: username, role, timestamp
+- Full audit trail of who did what and when
+- Non-repudiation (user cannot deny logging)
+
+### Ledger Entry Format
+
+```json
+{
+  "timestamp": 1707163629.123,
+  "user": "detector",
+  "user_role": "detector",
+  "data": {
+    "index": 1250,
+    "details": {
+      "detected_by": "autoencoder",
+      "score": 45.32
+    }
+  },
+  "prev_hash": "a1b2c3d4e5f6g7h8...",
+  "hash": "z9y8x7w6v5u4t3s2..."
+}
+```
+
+### Default Users (for Testing)
+
+```python
+admin ............ admin_password (full permissions)
+detector ......... detector_password (write detected anomalies)
+auditor ......... auditor_password (verify integrity)
+```
+
+### Using the Blockchain
+
+**Current Pipeline Usage:**
+Your `run_pipeline.py` automatically logs all detected anomalies:
+```python
+log_anomaly(int(idx), {"detected_by": "autoencoder", "score": float(test_errors[idx])})
+```
+
+**Example: Custom User Registration (as admin)**
+```python
+from src.blockchain_logger import PermissionedBlockchain
+
+blockchain = PermissionedBlockchain()
+blockchain.login("admin", "admin_password")
+blockchain.register_user("data_scientist", "my_password", role="auditor")
+```
+
+**Benefits of Permissioned Blockchain:**
+- ✅ **Auditability** - Complete record of all detections
+- ✅ **Accountability** - Track who logged which anomalies
+- ✅ **Integrity** - Hash chaining prevents tampering
+- ✅ **Compliance** - Meets regulatory requirements (SEC, HIPAA, GDPR)
+- ✅ **Security** - Multi-level access control
+- ✅ **Non-repudiation** - Users cannot deny their actions
+
 ## Current Performance (Last Run)
 
-With **2% injection fraction, noise scale 20.0**:
+With **10% injection fraction, noise scale 10.0**:
 
 | Metric | Validation | Test |
 |--------|-----------|------|

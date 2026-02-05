@@ -8,7 +8,7 @@ from typing import List, Dict, Any
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import precision_score, recall_score, f1_score, accuracy_score
+from sklearn.metrics import precision_score, recall_score, f1_score, accuracy_score, roc_auc_score
 
 # Ensure project root is importable when running as: python scripts/run_pipeline.py
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -130,6 +130,7 @@ def run(
     precision = precision_score(y_test, y_pred, zero_division=0)
     recall = recall_score(y_test, y_pred, zero_division=0)
     f1 = f1_score(y_test, y_pred, zero_division=0)
+    roc_auc = roc_auc_score(y_test, test_errors)
 
     print("\n--- FINAL results on TEST ---")
     print(f"Injected: {injected}")
@@ -138,6 +139,7 @@ def run(
     print(f"Precision: {precision:.3f}")
     print(f"Recall: {recall:.3f}")
     print(f"F1: {f1:.3f}")
+    print(f"ROC-AUC: {roc_auc:.3f}")
 
     print("\nScores summary (test):")
     print(f" - min: {float(np.min(test_errors))}")
@@ -199,6 +201,7 @@ def run(
     print(f"Autoencoder accuracy: {autoencoder_accuracy:.4f}")
     print(f"Blockchain accuracy: {blockchain_accuracy:.4f} (logged {blockchain_detected} entries)")
     print(f"Blockchain precision: {blockchain_precision:.4f} | recall: {blockchain_recall:.4f} | f1: {blockchain_f1:.4f}")
+    print(f"ROC-AUC: {roc_auc:.4f}")
 
     # 8) Optionally save outputs
     if push_outputs:
@@ -216,6 +219,7 @@ def run(
                 "precision": float(precision),
                 "recall": float(recall),
                 "f1": float(f1),
+                "roc_auc": float(roc_auc),
                 "accuracy": autoencoder_accuracy,
             },
             "blockchain_metrics": {

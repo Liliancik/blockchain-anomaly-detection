@@ -8,7 +8,7 @@ from typing import List, Dict, Any
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import precision_score, recall_score, f1_score
+from sklearn.metrics import precision_score, recall_score, f1_score, accuracy_score
 
 # Ensure project root is importable when running as: python scripts/run_pipeline.py
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -146,8 +146,59 @@ def run(
 
     # 7) Log detected anomalies (TEST indices) to ledger
     anomalies = [int(i) for i, p in enumerate(preds) if p == -1]
+
+    # Record ledger size before logging so we can measure which entries belong to this run
+    ledger_path = Path("blockchain_ledger.jsonl")
+    if ledger_path.exists():
+        with ledger_path.open("r", encoding="utf-8") as f:
+            ledger_before = sum(1 for _ in f)
+    else:
+        ledger_before = 0
+
     for idx in anomalies:
         log_anomaly(int(idx), {"detected_by": "autoencoder", "score": float(test_errors[idx])})
+
+    # Read newly appended ledger entries for this run
+    ledger_after = 0
+    new_entries = []
+    if ledger_path.exists():
+        with ledger_path.open("r", encoding="utf-8") as f:
+            lines = f.readlines()
+            ledger_after = len(lines)
+            if ledger_after > ledger_before:
+                new_lines = lines[ledger_before:ledger_after]
+                for ln in new_lines:
+                    try:
+                        new_entries.append(json.loads(ln))
+                    except Exception:
+                        continue
+
+    blockchain_logged_indices = [e.get("data", {}).get("index") for e in new_entries]
+    blockchain_detected = len(blockchain_logged_indices)
+    # Build ledger-based prediction vector aligned with test samples
+    y_ledger_pred = np.zeros(len(y_test), dtype=int)
+    for i in blockchain_logged_indices:
+        if i is None:
+            continue
+        if 0 <= int(i) < len(y_ledger_pred):
+            y_ledger_pred[int(i)] = 1
+
+    # Compute accuracies
+    autoencoder_accuracy = float(accuracy_score(y_test, y_pred))
+    blockchain_accuracy = float(accuracy_score(y_test, y_ledger_pred)) if blockchain_detected >= 0 else 0.0
+
+    # Blockchain-level metrics
+    blockchain_tp = int(np.sum((y_ledger_pred == 1) & (y_test == 1)))
+    blockchain_fp = int(np.sum((y_ledger_pred == 1) & (y_test == 0)))
+    blockchain_fn = int(np.sum((y_ledger_pred == 0) & (y_test == 1)))
+    blockchain_precision = (blockchain_tp / (blockchain_tp + blockchain_fp)) if (blockchain_tp + blockchain_fp) > 0 else 0.0
+    blockchain_recall = (blockchain_tp / (blockchain_tp + blockchain_fn)) if (blockchain_tp + blockchain_fn) > 0 else 0.0
+    blockchain_f1 = (2 * blockchain_precision * blockchain_recall / (blockchain_precision + blockchain_recall)) if (blockchain_precision + blockchain_recall) > 0 else 0.0
+
+    print("\n--- ACCURACY SUMMARY ---")
+    print(f"Autoencoder accuracy: {autoencoder_accuracy:.4f}")
+    print(f"Blockchain accuracy: {blockchain_accuracy:.4f} (logged {blockchain_detected} entries)")
+    print(f"Blockchain precision: {blockchain_precision:.4f} | recall: {blockchain_recall:.4f} | f1: {blockchain_f1:.4f}")
 
     # 8) Optionally save outputs
     if push_outputs:
@@ -165,6 +216,15 @@ def run(
                 "precision": float(precision),
                 "recall": float(recall),
                 "f1": float(f1),
+                "accuracy": autoencoder_accuracy,
+            },
+            "blockchain_metrics": {
+                "logged": blockchain_detected,
+                "true_positives": blockchain_tp,
+                "precision": float(blockchain_precision),
+                "recall": float(blockchain_recall),
+                "f1": float(blockchain_f1),
+                "accuracy": float(blockchain_accuracy),
             },
             "scores_summary_test": {
                 "min": float(np.min(test_errors)),

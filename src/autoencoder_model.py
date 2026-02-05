@@ -8,7 +8,7 @@ from tensorflow.keras import layers
 def build_autoencoder(input_dim: int, bottleneck_dim: int = 4) -> keras.Model:
     """
     Deep dense autoencoder for tabular anomaly detection.
-    Architecture: input → 128 → 64 → 32 → bottleneck → 32 → 64 → 128 → output
+    Architecture: input → 64 → 32 → 16 → bottleneck → 16 → 32 → 64 → output
     - 3 hidden layers on each side (optimal balance)
     - Dropout regularization (0.1 at bottleneck and output)
     - Reconstruction loss: MSE
@@ -18,16 +18,16 @@ def build_autoencoder(input_dim: int, bottleneck_dim: int = 4) -> keras.Model:
     inp = keras.Input(shape=(input_dim,))
 
     # Encoder (3 layers: 128 → 64 → 32)
-    x = layers.Dense(64, activation="relu")(inp)
+    x = layers.Dense(128, activation="relu")(inp)
+    x = layers.Dense(64, activation="relu")(x)
     x = layers.Dense(32, activation="relu")(x)
-    x = layers.Dense(16, activation="relu")(x)
     bottleneck = layers.Dense(bottleneck_dim, activation="relu")(x)
     x = layers.Dropout(0.1)(bottleneck)
 
     # Decoder (3 layers: 32 → 64 → 128)
-    x = layers.Dense(16, activation="relu")(x)
     x = layers.Dense(32, activation="relu")(x)
     x = layers.Dense(64, activation="relu")(x)
+    x = layers.Dense(128, activation="relu")(x)
     x = layers.Dropout(0.1)(x)
     out = layers.Dense(input_dim, activation="linear")(x)
 
@@ -51,7 +51,7 @@ def train_detector(
 ):
     """
     Train improved autoencoder on (assumed) normal data.
-    - Deeper architecture (128→64→32→bottleneck→32→64→128)
+    - Architecture (128→64→32→bottleneck→32→64→128)
     - Dropout regularization to prevent overfitting
     - More epochs for better convergence
     - Smaller batch size for more frequent updates

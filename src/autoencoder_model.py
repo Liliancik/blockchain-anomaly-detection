@@ -35,10 +35,6 @@ def build_autoencoder(input_dim: int, bottleneck_dim: int = 4) -> keras.Model:
     model.compile(optimizer=keras.optimizers.Adam(learning_rate=5e-4), loss="mse")
     return model
 
-    model = keras.Model(inputs=inp, outputs=out)
-    model.compile(optimizer=keras.optimizers.Adam(learning_rate=5e-4), loss="mse")
-    return model
-
 
 def train_detector(
     X_train: np.ndarray,

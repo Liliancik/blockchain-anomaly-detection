@@ -1,10 +1,13 @@
 """Anomaly detection pipeline: autoencoder + blockchain logging."""
 import os
+import sys
+
+# Set random seeds FIRST, before any TensorFlow imports
 os.environ["PYTHONHASHSEED"] = "42"
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
+os.environ["TF_DETERMINISTIC_OPS"] = "1"
 
 import json
-import sys
 import random
 from pathlib import Path
 
@@ -24,10 +27,11 @@ from src.autoencoder_model import train_detector, score_anomalies, predict_anoma
 from src.blockchain_logger import log_anomaly
 
 import tensorflow as tf
-tf.config.experimental.enable_op_determinism()
 
+# Set seeds after imports
 random.seed(config.SEED)
 np.random.seed(config.SEED)
+tf.random.set_seed(config.SEED)
 
 def make_labels(n, anomaly_indices):
     """1=anomaly, 0=normal."""
@@ -84,7 +88,8 @@ def main(data_path="data/StudentPerformanceFactors.csv"):
         bottleneck_dim=config.BOTTLENECK_DIM,
         epochs=config.EPOCHS,
         batch_size=config.BATCH_SIZE,
-        val_split=0.15,
+        val_split=0.10,
+        random_state=config.SEED,
     )
 
     # 5) Inject anomalies and find threshold on test

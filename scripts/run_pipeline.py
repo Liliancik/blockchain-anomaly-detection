@@ -130,7 +130,7 @@ def run(
     precision = precision_score(y_test, y_pred, zero_division=0)
     recall = recall_score(y_test, y_pred, zero_division=0)
     f1 = f1_score(y_test, y_pred, zero_division=0)
-    roc_auc = roc_auc_score(y_test, test_errors)
+    roc_auc = roc_auc_score(y_test, test_errors)  # ROC-AUC based on error scores
 
     print("\n--- FINAL results on TEST ---")
     print(f"Injected: {injected}")
@@ -139,7 +139,7 @@ def run(
     print(f"Precision: {precision:.3f}")
     print(f"Recall: {recall:.3f}")
     print(f"F1: {f1:.3f}")
-    print(f"ROC-AUC: {roc_auc:.3f}")
+    print(f"ROC-AUC: {roc_auc:.4f}")
 
     print("\nScores summary (test):")
     print(f" - min: {float(np.min(test_errors))}")
@@ -201,7 +201,6 @@ def run(
     print(f"Autoencoder accuracy: {autoencoder_accuracy:.4f}")
     print(f"Blockchain accuracy: {blockchain_accuracy:.4f} (logged {blockchain_detected} entries)")
     print(f"Blockchain precision: {blockchain_precision:.4f} | recall: {blockchain_recall:.4f} | f1: {blockchain_f1:.4f}")
-    print(f"ROC-AUC: {roc_auc:.4f}")
 
     # 8) Optionally save outputs
     if push_outputs:
@@ -238,15 +237,29 @@ def run(
         }
         out_path.write_text(json.dumps(out, indent=2))
         print(f"\nSaved outputs to {out_path}")
+        
+        # Generate ROC-AUC visualization
+        print("\nGenerating ROC-AUC visualization...")
+        try:
+            import subprocess
+            subprocess.run(
+                [sys.executable, "scripts/visualize_roc_auc.py"],
+                cwd=PROJECT_ROOT,
+                check=False,
+                capture_output=True
+            )
+            print("ROC-AUC curve generated successfully")
+        except Exception as e:
+            print(f"Note: Could not generate ROC-AUC visualization ({e})")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--data", default="data/StudentPerformanceFactors.csv", help="Path to dataset CSV")
     parser.add_argument("--method", default="noise", choices=["noise", "swap"])
-    parser.add_argument("--frac", type=float, default=0.10, help="Fraction of injected anomalies")
-    parser.add_argument("--noise-scale", type=float, default=10.0, help="Noise strength in scaled space (sigma units)")
-    parser.add_argument("--push-outputs", action="store_true")
+    parser.add_argument("--frac", type=float, default=0.02, help="Fraction of injected anomalies")
+    parser.add_argument("--noise-scale", type=float, default=5.0, help="Noise strength in scaled space (sigma units)")
+    parser.add_argument("--push-outputs", action="store_true", default=True)
     args = parser.parse_args()
 
     run(args.data, args.method, args.frac, args.noise_scale, args.push_outputs)

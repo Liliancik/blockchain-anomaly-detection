@@ -254,6 +254,63 @@ blockchain.register_user("data_scientist", "my_password", role="auditor")
 - ✅ **Security** - Multi-level access control
 - ✅ **Non-repudiation** - Users cannot deny their actions
 
+## Blockchain Security Validation: Tamper Detection Experiment
+
+To demonstrate the **practical value** of blockchain logging, we conduct a controlled security experiment showing why blockchain integrity matters.
+
+### The Experiment (5 Phases)
+
+**Phase 1: Log Detection**
+```
+Anomaly recorded:
+  - Sample index: 42
+  - Anomaly score: 3.5
+  - Hash: 0e119fb23ab45...
+```
+
+**Phase 2: Simulate Attack**
+```
+Attacker modifies ledger entry:
+  - Changes anomaly_score: 3.5 → 0.1
+  - Attempts to hide the detection
+```
+
+**Phase 3: Detection Verification**
+```
+Hash mismatch detected:
+  - Stored hash:   0e119fb23ab45...
+  - Computed hash: cca3ecc75b637...
+  - Verdict: ✗ TAMPERING DETECTED
+```
+
+### Key Findings
+
+1. **Autoencoder ≠ Blockchain**: Autoencoder finds anomalies. Blockchain prevents tampering. These are orthogonal.
+2. **Hash Chain Protection**: Modifying one entry breaks the entire chain (prev_hash linkage).
+3. **Silent Tampering Impossible**: Any modification is cryptographically detectable.
+4. **Attacker Burden**: To hide one change requires recomputing:
+   - Current entry hash
+   - All subsequent entries' prev_hash
+   - All subsequent entries' hash
+   - This is computationally infeasible for long chains
+
+### Run the Experiment
+
+```powershell
+python scripts/tamper_detection_test.py
+```
+
+Output includes:
+- Original hash computation
+- Tampering simulation
+- Hash mismatch detection
+- Results saved to `outputs/tamper_detection_results.json`
+
+**Why This Matters:**
+- **Without blockchain**: Attackers can silently modify detection records
+- **With blockchain**: Any modification is immediately detectable
+- **Compliance**: Proves immutability for regulatory audits (HIPAA, GDPR, SOC 2)
+
 ## Current Performance (Dual Configuration Analysis)
 
 ### 🎯 Production Configuration: MODERATE (2% Injection, 5.0 Noise) ⭐ RECOMMENDED
@@ -324,6 +381,9 @@ Tested 6 different autoencoder architectures with bottleneck=4 and dropout=0.1:
 | Script | Purpose |
 |--------|---------|
 | `scripts/run_pipeline.py` | Full pipeline: load → preprocess → train → inject → detect → log |
+| `scripts/visualize_roc_auc.py` | Generate ROC-AUC curve visualization from pipeline results |
+| `scripts/compare_settings.py` | Compare moderate (2%, 5.0) vs aggressive (10%, 10.0) configurations |
+| `scripts/tamper_detection_test.py` | **Controlled experiment:** Detect blockchain tampering (5-phase security demo) |
 | `scripts/compute_metrics.py` | Calculate precision, recall, F1 from outputs |
 | `scripts/compare_noise_scales.py` | Generate side-by-side visualizations for noise scales 5.0, 10.0, 20.0 |
 | `scripts/visualize_injection.py` | Visualize clean vs injected data distributions |

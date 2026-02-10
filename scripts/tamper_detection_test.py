@@ -105,7 +105,7 @@ def test_tamper_detection():
         for entry in entries:
             f.write(json.dumps(entry) + "\n")
     
-    print("✗ Tampered ledger written to disk")
+    print("[!] Tampered ledger written to disk")
     
     # Read tampered entry
     with open(ledger_path, "r") as f:
@@ -142,9 +142,9 @@ def test_tamper_detection():
     hash_match = tampered_hash_val == expected_hash_for_tampered
     
     if hash_match:
-        print("\n✓ Hash matches - data is AUTHENTIC")
+        print("✓ Hash matches - data is AUTHENTIC")
     else:
-        print("\n✗ Hash MISMATCH - data has been TAMPERED!")
+        print("[ALERT] Hash MISMATCH - data has been TAMPERED!")
         print(f"\n  Difference:")
         print(f"    Stored:   {tampered_hash_val[:16]}...")
         print(f"    Expected: {expected_hash_for_tampered[:16]}...")
@@ -201,7 +201,7 @@ def test_tamper_detection():
     output_path = Path("outputs/tamper_detection_results.json")
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(results, indent=2))
-    print(f"\n✓ Results saved to {output_path}")
+    print(f"\n[OK] Results saved to {output_path}")
     
     print("\n" + "="*90)
     print("CONCLUSION: Why Blockchain Matters")

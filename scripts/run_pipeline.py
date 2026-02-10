@@ -251,6 +251,20 @@ def run(
             print("ROC-AUC curve generated successfully")
         except Exception as e:
             print(f"Note: Could not generate ROC-AUC visualization ({e})")
+        
+        # Generate threshold analysis visualization
+        print("Generating threshold analysis visualization...")
+        try:
+            import subprocess
+            subprocess.run(
+                [sys.executable, "scripts/visualize_thresholds.py"],
+                cwd=PROJECT_ROOT,
+                check=False,
+                capture_output=True
+            )
+            print("Threshold analysis visualization generated successfully")
+        except Exception as e:
+            print(f"Note: Could not generate threshold analysis ({e})")
 
 
 if __name__ == "__main__":

@@ -382,12 +382,82 @@ Tested 6 different autoencoder architectures with bottleneck=4 and dropout=0.1:
 |--------|---------|
 | `scripts/run_pipeline.py` | Full pipeline: load → preprocess → train → inject → detect → log |
 | `scripts/visualize_roc_auc.py` | Generate ROC-AUC curve visualization from pipeline results |
+| `scripts/visualize_thresholds.py` | **NEW:** Threshold decision boundary analysis with percentile alternatives |
+| `scripts/compute_metrics.py` | **Enhanced:** Comprehensive metrics with threshold guidance (80/90/95/99 percentile) |
 | `scripts/compare_settings.py` | Compare moderate (2%, 5.0) vs aggressive (10%, 10.0) configurations |
 | `scripts/tamper_detection_test.py` | **Controlled experiment:** Detect blockchain tampering (5-phase security demo) |
-| `scripts/compute_metrics.py` | Calculate precision, recall, F1 from outputs |
 | `scripts/compare_noise_scales.py` | Generate side-by-side visualizations for noise scales 5.0, 10.0, 20.0 |
 | `scripts/visualize_injection.py` | Visualize clean vs injected data distributions |
 | `scripts/tune_hyperparameters.py` | Grid search for optimal bottleneck dimensions |
+
+### Threshold Decision Guidance
+
+The anomaly detection pipeline offers **multiple threshold strategies** to accommodate different use cases. After each run, `scripts/compute_metrics.py` and `scripts/visualize_thresholds.py` generate analysis and visualization to guide your choice.
+
+#### Available Threshold Strategies
+
+| Strategy | Threshold Type | When to Use | Advantage | Trade-off |
+|----------|---|---|---|---|
+| **High Recall (80th-85th percentile)** | ~6.2-6.6 | Critical anomalies must not be missed (security, fraud detection) | Catches subtle anomalies | Higher false positive rate |
+| **Balanced F1 (Validation-optimized)** | ~1.19 (default) | General-purpose anomaly detection (recommended) | Optimizes precision-recall balance | May miss edge cases |
+| **High Precision (95th-99th percentile)** | ~7.4-7.7 | Only investigate obvious anomalies (cost-sensitive scenarios) | Minimal false alarms | May miss subtle anomalies |
+
+#### Example: Choosing a Threshold
+
+**Scenario 1: Payment Fraud Detection**
+- Risk: Missing fraud is costly (financial loss)
+- Recommendation: **Use 85th percentile** (~6.6)
+- Rationale: Catch subtle patterns even with some false positives
+
+**Scenario 2: Student Performance Monitoring**
+- Risk: False alarms cause unnecessary intervention
+- Recommendation: **Use 95th percentile** (~7.4)
+- Rationale: Flag only clear-cut anomalies, reduce noise
+
+**Scenario 3: General Anomaly Detection**
+- Risk: Balanced risk of missing and over-flagging
+- Recommendation: **Use validation-optimized threshold** (~1.19, current default)
+- Rationale: F1-optimized for your dataset characteristics
+
+#### Accessing Threshold Analysis
+
+After running the pipeline:
+
+```powershell
+# View detailed threshold metrics and percentile alternatives
+python scripts/compute_metrics.py
+
+# View threshold decision boundary visualization
+# Output: outputs/threshold_analysis.png
+```
+
+**Output includes:**
+- Current threshold value and its percentile position
+- Reconstruction error statistics (min, max, mean)
+- All percentile alternatives (80th, 85th, 90th, 95th, 99th)
+- Decision guidance for each strategy
+- Visual comparison in `outputs/threshold_analysis.png`
+
+#### Modifying the Threshold at Runtime
+
+To use a different threshold during pipeline execution:
+
+```python
+# In scripts/run_pipeline.py, modify:
+threshold = 6.6  # 85th percentile for high recall
+# or
+threshold = 7.4  # 95th percentile for high precision
+```
+
+Or create a custom script:
+```python
+from src.autoencoder_model import AutoencoderAnomalyDetector
+
+detector = AutoencoderAnomalyDetector()
+detector.load()
+custom_threshold = 6.6  # Your choice
+detected = detector.predict(X_test, threshold=custom_threshold)
+```
 
 ### Data Flow
 

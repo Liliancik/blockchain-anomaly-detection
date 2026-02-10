@@ -27,6 +27,9 @@ from src.anomaly_injection import inject_anomalies
 from src.autoencoder_model import train_detector, score_anomalies, predict_anomalies
 from src.blockchain_logger import log_anomaly
 
+# Now that TensorFlow is imported (via autoencoder_model), configure it for determinism
+import tensorflow as tf
+tf.config.experimental.enable_op_determinism()
 
 def make_labels(n: int, anomaly_indices: List[int]) -> np.ndarray:
     """Binary labels: 1=anomaly, 0=normal (indices are 0..n-1 positions)."""

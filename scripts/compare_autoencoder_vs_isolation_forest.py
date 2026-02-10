@@ -52,6 +52,9 @@ from src import preprocessing as prep
 from src.anomaly_injection import inject_anomalies
 from src.autoencoder_model import train_detector, score_anomalies
 
+# Now that TensorFlow is imported (via autoencoder_model), configure it for determinism
+import tensorflow as tf
+tf.config.experimental.enable_op_determinism()
 
 def tune_threshold_best_f1(
     errors: np.ndarray,

@@ -24,7 +24,7 @@ from src.data_loader import load_data
 from src import preprocessing as prep
 from src.anomaly_injection import inject_anomalies
 from src.autoencoder_model import train_detector, score_anomalies, predict_anomalies
-from src.blockchain_logger import log_anomaly
+from src.blockchain_logger import PermissionedBlockchain
 
 import tensorflow as tf
 
@@ -88,7 +88,7 @@ def main(data_path="data/StudentPerformanceFactors.csv"):
         bottleneck_dim=config.BOTTLENECK_DIM,
         epochs=config.EPOCHS,
         batch_size=config.BATCH_SIZE,
-        val_split=0.10,
+        val_split=0.15,  # Use 15% of train for validation
         random_state=config.SEED,
     )
 
@@ -132,13 +132,31 @@ def main(data_path="data/StudentPerformanceFactors.csv"):
     print(f"Detected:  {int(np.sum(y_pred))}/{len(y_test)}")
     print(f"TP/FP/FN:  {tp}/{fp}/{fn}")
 
-    # 8) Log to blockchain
-    print(f"\n[7] Logging to blockchain ({config.LEDGER_PATH})...")
+    # 8) Log to blockchain with permissioned access
+    print(f"\n[7] Logging to permissioned blockchain ({config.LEDGER_PATH})...")
+    blockchain = PermissionedBlockchain(ledger_path=config.LEDGER_PATH)
+    
+    # Login as detector user (has write permission)
+    blockchain.login("detector", "detector_password")
+    print(f"  ✓ Authenticated as '{blockchain.current_user.username}' (role: {blockchain.current_user.role})")
+    
+    # Log each detected anomaly
     anomaly_indices = [int(i) for i, p in enumerate(preds) if p == -1]
     for idx in anomaly_indices:
-        log_anomaly(idx, {"score": float(test_errors[idx])})
-
-    print(f"  Logged {len(anomaly_indices)} anomalies")
+        blockchain.log_anomaly(idx, {"score": float(test_errors[idx])})
+    
+    print(f"  ✓ Logged {len(anomaly_indices)} anomalies to blockchain")
+    
+    # Verify blockchain integrity (auditor verification)
+    blockchain.logout()
+    blockchain.login("auditor", "auditor_password")
+    is_valid = blockchain.verify_blockchain()
+    if is_valid:
+        print(f"  ✓ Blockchain verification passed (role: {blockchain.current_user.role})")
+    else:
+        print(f"  ✗ Blockchain verification FAILED - possible tampering detected!")
+    
+    blockchain.logout()
 
     # 9) Save output
     out_path = Path("pipeline_outputs.json")

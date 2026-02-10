@@ -12,8 +12,15 @@ This script:
 
 Usage:
     python scripts/compare_autoencoder_vs_isolation_forest.py
-    python scripts/compare_autoencoder_vs_isolation_forest.py --frac 0.10 --noise-scale 10.0
+    python scripts/compare_autoencoder_vs_isolation_forest.py --frac 0.10 --scale 10.0
 """
+
+import os
+
+# Set reproducibility environment variables BEFORE importing TensorFlow
+os.environ["PYTHONHASHSEED"] = "42"
+os.environ["TF_DETERMINISTIC_OPS"] = "1"
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 
 import argparse
 import json
@@ -97,6 +104,11 @@ def evaluate_detector(
 
 
 def main():
+    # Set random seeds for reproducibility
+    import random
+    random.seed(42)
+    np.random.seed(42)
+    
     parser = argparse.ArgumentParser(
         description="Compare Autoencoder vs Isolation Forest baseline"
     )

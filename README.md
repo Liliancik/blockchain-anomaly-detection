@@ -688,6 +688,39 @@ New-Item -ItemType Directory -Path outputs -ErrorAction SilentlyContinue
 python scripts/run_pipeline.py --push-outputs
 ```
 
+### Different Results on Each Run?
+
+**This is normal!** Neural networks have inherent randomness sources:
+
+1. **Floating-point computation order** — Different rounding depending on CPU optimizations
+2. **oneDNN operations** — Intel optimizations can vary between runs
+3. **Seed propagation** — Some TensorFlow operations use additional randomness layers
+4. **Threading/parallelization** — Multi-threaded operations may execute in different orders
+
+**Expected variation:**
+- ROC-AUC: ±0.01 difference (0.96 vs 0.97 is normal)
+- Precision/Recall: ±5% difference (0.65 vs 0.70 is normal)
+- Threshold: ±0.2 difference (1.19 vs 1.39 is normal)
+
+**Scripts already configured for reproducibility:**
+```python
+# Set at module load time
+os.environ["PYTHONHASHSEED"] = "42"
+os.environ["TF_DETERMINISTIC_OPS"] = "1"
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
+
+# Set in code
+np.random.seed(42)
+random.seed(42)
+```
+
+**To minimize variation:**
+1. All scripts set `random_state=42` in train/test splits
+2. Autoencoder training uses fixed seed (42)
+3. Data splits are deterministic
+
+Results will be highly consistent, but **not perfectly identical** across runs due to TensorFlow's inherent floating-point variability. See [TensorFlow Reproducibility Guide](https://www.tensorflow.org/api_docs/python/tf/keras/utils/set_random_seed) for details.
+
 ## Project Structure
 
 ```

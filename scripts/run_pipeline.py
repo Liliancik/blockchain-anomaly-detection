@@ -1,4 +1,11 @@
 """Run end-to-end pipeline: load data, preprocess, split, inject anomalies, tune threshold, detect, log to ledger."""
+import os
+
+# Set reproducibility environment variables BEFORE importing TensorFlow
+os.environ["PYTHONHASHSEED"] = "42"
+os.environ["TF_DETERMINISTIC_OPS"] = "1"
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
+
 import argparse
 import json
 import sys
@@ -61,10 +68,15 @@ def tune_threshold_best_f1(
 def run(
     path: str,
     injection_method: str = "noise",
-    frac: float = 0.01,
+    frac: float = 0.02,
     noise_scale: float = 5.0,
     push_outputs: bool = False,
 ):
+    # Set random seeds for reproducibility
+    import random
+    random.seed(42)
+    np.random.seed(42)
+    
     # 1) Load + preprocess
     df = load_data(path)
     df = prep.handle_missing(df)

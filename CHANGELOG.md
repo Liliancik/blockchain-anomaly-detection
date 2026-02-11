@@ -735,27 +735,6 @@ Planned test suites:
 
 ---
 
-## References & Related Work
-
-### Academic Papers
-- **Autoencoders for Anomaly Detection**: Kingma & Welling (2013) - VAE framework
-- **Isolation Forest**: Liu et al. (2008) - Tree-based anomaly detection
-- **Blockchain Auditing**: Swan (2015) - Distributed ledger applications
-- **Educational Data Mining**: Peña-Ayala (2014) - Student performance analysis
-
-### Libraries & Frameworks
-- **TensorFlow/Keras**: Deep learning framework
-- **Scikit-learn**: Classical ML, metrics, preprocessing
-- **Pandas/NumPy**: Data manipulation
-- **Matplotlib/Seaborn**: Visualization
-
-### Standards
-- **SHA-256**: NIST-approved cryptographic hash
-- **HMAC-SHA256**: Message authentication code standard
-- **JSON Lines**: Streaming JSON format for logs
-
----
-
 ## Developer Notes
 
 ### Common Debugging Workflow

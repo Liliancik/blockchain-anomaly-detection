@@ -4,8 +4,8 @@
 
 A clean, production-ready **anomaly detection pipeline** combining a deep autoencoder with blockchain logging for auditable anomaly detection on tabular data.
 
-**Key Results** (75/25 split, Bottleneck Dim=4):
-- Precision: 54.4% | Recall: 93.9% | F1: 0.689 | ROC-AUC: 1.0
+**Key Results** (75/25 split, Bottleneck Dim=4, with reproducibility fixes):
+- Precision: 90.0% | Recall: 81.8% | F1: 0.857 | ROC-AUC: 0.969 | TP/FP/FN: 27/3/6
 
 ## What It Does
 
@@ -154,6 +154,15 @@ See **`CHANGELOG.md`** for:
 - Future enhancements
 - Testing approaches
 
+## Visualizations
+
+Generate additional visualizations:
+```powershell
+# Feature importance and distribution analysis
+python scripts/visualize_encoder_data.py
+# Output: outputs/encoder_features.png
+```
+
 ---
 
-**Status**: Production-ready | **Best Config**: 75/25 split, bottleneck=4, F1=0.689
+**Status**: Production-ready | **Best Config**: 75/25 split, bottleneck=4, F1=0.857

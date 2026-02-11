@@ -881,6 +881,56 @@ Planned test suites:
 - Time: ~25 minutes
 - Result: ✅ Feature importance visualization created and integrated
 
+### Iteration 10: Root Cause Analysis - Why Isolation Forest Fails
+- Goal: Document why Isolation Forest baseline performs so poorly (Precision 7.55%, F1 0.087) vs Autoencoder (Precision 90%, F1 0.857)
+- Analysis: 5 fundamental problems identified
+  1. **Feature Correlation Problem (PRIMARY)**
+     - Student performance data is HIGHLY CORRELATED (e.g., StudyHours → GPA, Attendance → FinalGrade)
+     - Isolation Forest assumes FEATURE INDEPENDENCE
+     - Works great on sparse independent features (fraud, intrusion detection)
+     - Fails completely on dense correlated tabular data
+     - Why it fails here: Injected anomalies are Gaussian noise on correlated structure; IF can't distinguish noise from natural correlation variation; Autoencoder sees noise as reconstruction error
+  
+  2. **Axis-Aligned Splits vs Multivariate Structure**
+     - Isolation Forest uses univariate axis-aligned splits
+     - Student data has MULTIVARIATE structure (feature bundles)
+     - Requires many splits to separate multivariate anomaly from normal manifold
+     - Result: High false positive rate in clean distribution
+  
+  3. **Contamination Parameter Not Learned**
+     - We set contamination=0.02 (matching injection rate)
+     - IF doesn't learn what anomalies look like, just finds "most isolated" points by path length
+     - On clean training data, it arbitrarily selects 2% as "isolated"
+     - Result: Detects ~33 samples but only 2-3 are true positives → 7.55% precision
+  
+  4. **High Dimensionality Problem (28 features)**
+     - In 28D space, many paths lead to any point
+     - Hard to determine what "isolated" means
+     - Autoencoder solution: 7:1 compression (28D → 4D bottleneck)
+     - Forces model to learn essential structure; noise cannot be reconstructed
+  
+  5. **Injection Type Mismatch**
+     - We inject: SMOOTH GAUSSIAN NOISE (continuous perturbation)
+     - IF designed for: DISCRETE/CATEGORICAL anomalies (fraud patterns, intrusions)
+     - Autoencoder designed for: CONTINUOUS RECONSTRUCTION
+     - Even tiny noise → large reconstruction error
+- Key Insight:
+  - Isolation Forest is fundamentally a tool for detecting "unusual feature combinations"
+  - Student data is a dictionary where all features are naturally related
+  - No "unusual combinations" exist—only "unusual trajectories in correlated space"
+  - Only autoencoders (learning manifold structure) can detect such trajectories
+- Analogy: "Isolation Forest is like a spam detector looking for 'weird word combinations.' But a dictionary is inherently correlated—no weird combinations exist naturally. Our anomalies are just noise. Autoencoders learn what 'normal students' look like in their full multivariate glory, then detect any deviation."
+- Performance Comparison Summary:
+  | Metric | Autoencoder | Isolation Forest | Improvement |
+  |--------|------------|-----------------|-------------|
+  | Precision | 90.0% | 7.55% | +82.45 pp |
+  | Recall | 81.8% | 10.3% | +71.5 pp |
+  | F1 | 0.857 | 0.087 | 9.8x better |
+  | ROC-AUC | 0.969 | 0.737 | +0.232 |
+- Files analyzed: `scripts/compare_autoencoder_vs_isolation_forest.py` (full implementation review)
+- Time: ~30 minutes
+- Result: ✅ Root cause analysis documented; ready for presentation/explanation
+
 ---
 
 ## Version History

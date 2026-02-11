@@ -8,7 +8,7 @@ from tensorflow.keras import layers
 def build_autoencoder(input_dim: int, bottleneck_dim: int = 4) -> keras.Model:
     """
     Deep dense autoencoder for tabular anomaly detection.
-    Architecture: input → 64 → 32 → 16 → bottleneck → 16 → 32 → 64 → output
+    Architecture: input → 128 → 64 → 32 → bottleneck → 32 → 64 → 128 → output
     - 3 hidden layers on each side (optimal balance)
     - Dropout regularization (0.1 at bottleneck and output)
     - Reconstruction loss: MSE
@@ -40,7 +40,7 @@ def train_detector(
     X_train: np.ndarray,
     contamination: float = 0.02,
     bottleneck_dim: int = 4,
-    epochs: int = 150,
+    epochs: int = 80,
     batch_size: int = 16,
     val_split: float = 0.15,
     random_state: int = 42,

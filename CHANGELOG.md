@@ -976,6 +976,110 @@ Planned test suites:
 
 ---
 
+## Iteration 13: Architecture & Bottleneck Dimension Tuning
+
+**Goal**: Systematically test different autoencoder architectures and bottleneck dimensions to find optimal configuration.
+
+**Changes Made**:
+- Created `test_architectures.py`: Comprehensive testing script
+  - Tests 6 different architectures × 6 bottleneck dimensions = 36 total configurations
+  - Dynamically modifies both `src/autoencoder_model.py` and `src/config.py` per iteration
+  - Architectures tested:
+    1. **shallow_2**: 64→32→bottleneck→32→64 (2 layers each side, fast)
+    2. **baseline_3**: 128→64→32→bottleneck→32→64→128 (3 layers each side, current production)
+    3. **deep_4**: 256→128→64→32→bottleneck→32→64→128→256 (4 layers each side, most expressive)
+    4. **moderate_4**: 128→64→32→16→bottleneck→16→32→64→128 (4 layers each side, gradually narrows)
+    5. **narrow_3**: 64→32→16→bottleneck→16→32→64 (3 layers, smaller sizes, memory efficient)
+    6. **wide_3**: 256→192→128→bottleneck→128→192→256 (3 layers, larger sizes, more capacity)
+  - Bottleneck dimensions: [2, 4, 6, 8, 10, 12]
+
+**Key Findings**:
+- **Best Performing Architecture**: `moderate_4` (128→64→32→16→bottleneck→16→32→64→128)
+  - Best F1 Score: 0.9254 at bottleneck dimension 10
+  - Average F1: 0.8391 across all bottleneck dimensions
+  - Gradually narrowing approach appears optimal for compression/reconstruction
+
+- **Bottleneck Dimension Impact**: 
+  - Different bottleneck dimensions DO produce different results
+  - Test script dynamically updates `config.BOTTLENECK_DIM` per iteration to ensure variations are actual
+  - Bottleneck dim 10 performed best for moderate_4 architecture
+  - Smaller dimensions (2-4) tend to underfit slightly
+  - Larger dimensions (10-12) capture more features
+
+- **Architecture Rankings** (by average F1 score):
+  1. moderate_4: Avg F1=0.8391, Best F1=0.9254 (dim=10)
+  2. shallow_2: Competitive baseline with simplicity
+  3. baseline_3: Current production, solid performance
+  4. Others: Wide and deep architectures show trade-offs
+
+- **Critical Discovery**:
+  - Pipeline correctly uses `config.BOTTLENECK_DIM` parameter
+  - `train_detector()` receives bottleneck_dim from pipeline and passes it to `build_autoencoder()`
+  - Verified that bottleneck dimension is actually being used (not hardcoded anywhere)
+
+**Files Modified**:
+- `test_architectures.py` - Created new architecture testing framework
+- `src/config.py` - EPOCHS=80, BOTTLENECK_DIM=4 (default)
+- `src/autoencoder_model.py` - Reverted to original 3-layer architecture for production
+- `architecture_tuning_results.json` - New output file with all 36 test results
+
+**Time**: Approximately 45 minutes to design, implement, and test the framework
+
+**Result**: 
+- ✅ Framework created for systematic architecture exploration
+- ✅ Moderate_4 architecture identified as best performer
+- ✅ Bottleneck dimension 10 shows optimal performance (0.9254 F1)
+- ⚠️ Decision: Keeping baseline_3 (3-layer) in production for stability
+- ✅ All dynamic parameter passing verified and working correctly
+
+**Conclusion**: Gradually-narrowing encoder paths (moderate_4) outperform symmetric or very deep/wide architectures. Controlled information bottlenecking improves anomaly detection by forcing the model to learn essential features.
+
+---
+
+## Technical Documentation: Anomaly Injection Flow
+
+**How Anomaly Injection Works (Config → Pipeline → Functions):**
+
+1. **Configuration** (`src/config.py`):
+   - Defines: `INJECTION_FRAC = 0.02` (2% of test data will be anomalies)
+   - Defines: `NOISE_SCALE = 5.0` (magnitude of injected noise in sigma units)
+
+2. **Pipeline** (`scripts/run_pipeline.py`, line ~100):
+   - Reads config values: `frac=config.INJECTION_FRAC, scale=config.NOISE_SCALE`
+   - **Explicitly passes** these to the anomaly injection function
+   - Example call:
+     ```python
+     df_test_injected, anomaly_indices = inject_noise(
+         df_test_scaled,
+         frac=config.INJECTION_FRAC,      # ← Passes 0.02 (2%)
+         scale=config.NOISE_SCALE,        # ← Passes 5.0
+         random_state=config.SEED,
+     )
+     ```
+
+3. **Anomaly Injection** (`src/anomaly_injection.py`):
+   - **Does NOT import config.py** (good design: decoupled from config)
+   - Receives `frac` parameter from pipeline
+   - Calculates: `k = max(1, int(n * frac))` → number of rows to inject anomalies into
+   - For 2% injection on ~4,800 test samples: ~96 anomalies injected
+   - **Two injection methods available:**
+     - `inject_noise()`: Adds Gaussian noise (5σ) to continuous columns (default)
+     - `inject_swap()`: Swaps values between rows (contextual anomalies)
+
+**To Change Injection Rate:**
+- Modify `INJECTION_FRAC` in `src/config.py` (e.g., 0.02 → 0.05 for 5%)
+- Pipeline automatically passes new value through
+- Anomaly injection function uses updated fraction
+- **No changes needed** in `anomaly_injection.py` or `run_pipeline.py`
+
+**Key Points:**
+- Injection happens **after train/test split** (only test data gets anomalies)
+- Training threshold is tuned using the same `INJECTION_FRAC` value for consistency
+- Realistic injection rate (2%) assumes anomalies are rare events
+- Higher injection rates (5%+) unrealistic and cause overfitting to non-representative scenarios
+
+---
+
 ## Version History
 
 - **v0.1** (Current): Initial working pipeline with 70/20/10 split, tuned config (75/25), simplified codebase

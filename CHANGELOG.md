@@ -863,6 +863,24 @@ Planned test suites:
 - Time: ~15 minutes
 - Result: ✅ Full permissioned blockchain now visible in pipeline output
 
+### Iteration 9: Feature Importance Visualization
+- Goal: Create simple bar chart showing encoder input data with feature importance analysis
+- Changes:
+  - Created `scripts/visualize_encoder_data.py` with two-panel visualization:
+    - **Left panel**: Feature means (sorted by magnitude)
+    - **Right panel**: Top 15 features by reconstruction error importance
+  - Importance calculated via permutation importance: measures how much reconstruction error increases when each feature is shuffled
+  - Quick autoencoder training (50 epochs) on test set for importance analysis
+  - Outputs clean, publication-ready visualization to `outputs/encoder_features.png`
+- Features:
+  - ✅ Shows all 28 encoder input features (after categorical encoding)
+  - ✅ Highlights top features in both value and importance
+  - ✅ Includes dataset summary in title (6,607 samples × 28 features → 4D bottleneck)
+  - ✅ Prints top 10 important features to console
+- Files created: `scripts/visualize_encoder_data.py`
+- Time: ~25 minutes
+- Result: ✅ Feature importance visualization created and integrated
+
 ---
 
 ## Version History

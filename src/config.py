@@ -13,7 +13,7 @@ NOISE_SCALE = 5.0
 
 # Autoencoder
 BOTTLENECK_DIM = 4
-EPOCHS = 150
+EPOCHS = 80
 BATCH_SIZE = 16
 
 # Blockchain

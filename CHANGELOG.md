@@ -59,6 +59,183 @@ This file serves as the **detailed tracker** for all development, experiments, f
 
 ---
 
+## Complete Data Analysis Plan
+
+### 1. Data Acquisition & Understanding
+- **Source**: StudentPerformanceFactors.csv (6,607 samples, 20 features)
+- **Features**: 7 numeric + 13 categorical
+- **Scope**: Student performance monitoring with 20 predictive factors
+- **Status**: ✅ Documented in visualizations and analysis
+
+### 2. Exploratory Data Analysis (EDA)
+**Analysis Components**:
+- Numeric feature distributions (histograms)
+- Categorical value counts (bar charts)
+- Correlation matrix analysis (heatmap)
+- Target variable analysis (Exam_Score)
+- Missing value assessment
+- Summary statistics
+
+**Key Findings from EDA**:
+- No missing values detected
+- 6,607 clean records available
+- Exam_Score: μ=67.24, σ=3.89, range [55-101]
+- Strongest correlations: Attendance (0.58), Hours_Studied (0.45)
+- Feature type distribution: 7 numeric (35%), 13 categorical (65%)
+
+### 3. Data Preprocessing Pipeline
+**Flow**: `Load → Missing → Encode → Select → Normalize`
+
+| Step | Method | Purpose |
+|------|--------|---------|
+| **Missing Values** | Median (numeric), Mode (categorical) | Handle gaps - Result: 0 missing |
+| **Categorical Encoding** | One-hot encoding (drop first) | Convert to numeric features |
+| **Feature Selection** | Exclude: [FinalGrade, PassFail, ExamResult] | Remove labels, keep Exam_Score |
+| **Normalization** | StandardScaler (mean=0, std=1) | Scale features consistently |
+
+**Output**: 28 numeric features ready for model training
+
+### 4. Model Development & Training
+**Architecture**: Autoencoder (Deep Dense Network)
+```
+Input (28) 
+  → Dense(128, ReLU) 
+  → Dense(64, ReLU) 
+  → Dense(32, ReLU)
+  → Bottleneck(4, ReLU) [7:1 compression]
+  → Dense(32, ReLU) 
+  → Dense(64, ReLU) 
+  → Dense(128, ReLU)
+  → Output(28, Linear)
+```
+
+**Training Configuration**:
+- Loss Function: Mean Squared Error (MSE)
+- Optimizer: Adam (lr=5e-4)
+- Dropout: 0.1 (regularization)
+- Early Stopping: 20 epochs patience
+- Validation Split: 15% of training data
+- Max Epochs: 150
+
+**Data Splits**:
+- Training: 75% (clean data, no anomalies)
+- Testing: 25% (for anomaly injection & evaluation)
+
+### 5. Anomaly Injection & Detection Strategy
+**Injection Phase**:
+- Inject noise into 2% of test set (~33 samples)
+- Noise Scale: 5.0 standard deviations
+- Method: Gaussian noise addition
+
+**Detection Phase**:
+- Calculate reconstruction error per sample
+- Low error = normal behavior
+- High error = anomalous pattern
+- Grid search: 400 different thresholds
+
+**Threshold Optimization**:
+- Primary metric: F1 Score
+- Balance precision vs recall
+- Select threshold maximizing F1
+
+### 6. Performance Evaluation Metrics
+**Classification Metrics**:
+- Precision: Minimize false alarms (avoid incorrectly flagging normal as anomaly)
+- Recall: Maximize detection rate (catch most actual anomalies)
+- F1 Score: Balanced harmonic mean
+- ROC-AUC: Discrimination ability (TPR vs FPR)
+
+**Confusion Matrix**:
+- True Positives (TP): Correctly detected anomalies
+- False Positives (FP): Normal samples incorrectly flagged
+- False Negatives (FN): Anomalies missed
+- True Negatives (TN): Correctly identified normal samples
+
+**Key Results**:
+- Precision: 90.0% (only 3 false alarms)
+- Recall: 81.8% (catches 81.8% of anomalies)
+- F1 Score: 0.857
+- ROC-AUC: 0.969
+
+### 7. Baseline Comparison: Autoencoder vs Isolation Forest
+**Comparative Analysis**:
+
+| Metric | Autoencoder | Isolation Forest | Advantage |
+|--------|-----------|-----------------|-----------|
+| Precision | 77.8% | 7.55% | +70.3 pp |
+| Recall | 89.7% | 10.3% | +79.4 pp |
+| F1 Score | 0.833 | 0.087 | +9.5x better |
+| ROC-AUC | 0.989 | 0.737 | +0.252 |
+
+**Conclusion**: Autoencoder decisively outperforms Isolation Forest on this student performance dataset.
+
+### 8. Blockchain Auditing & Security
+**Purpose**: Create immutable audit trail for all anomaly detections
+
+**Access Control Model**:
+- **Detector**: Write anomaly detection records
+- **Auditor**: Verify integrity and authenticity
+- **Viewer**: Read-only access to ledger
+- **Admin**: User registration and role management
+
+**Security Features**:
+- Hash-chained entries (tamper detection)
+- Digital signatures using HMAC
+- Password protection (SHA256)
+- Append-only ledger
+- Signature verification on read
+
+**Output**: `blockchain_ledger.jsonl` (immutable audit trail)
+
+### 9. Reproducibility & Consistency
+**Random Seed**: SEED=42 (fixed)
+**Configuration Centralization**: `src/config.py`
+**Expected Variation**: <1% across runs
+
+**Reproducible Components**:
+- Data preprocessing
+- Model training
+- Threshold selection
+- Performance metrics
+- Blockchain signatures
+
+### 10. Project Scripts & Workflow
+
+| Script | Purpose | Output |
+|--------|---------|--------|
+| `run_pipeline.py` | Full end-to-end pipeline | `pipeline_outputs.json`, `blockchain_ledger.jsonl` |
+| `tune_hyperparameters.py` | Grid search hyperparameter optimization | `tuning_results.json` |
+| `visualize_encoder_data.py` | Feature importance visualization | `outputs/encoder_features.png` |
+| `compare_autoencoder_vs_isolation_forest.py` | Baseline comparison | `outputs/baseline_comparison_results.json` |
+| `tamper_detection_test.py` | Blockchain integrity verification | Test reports |
+
+**End-to-End Flow**:
+```
+Data Loading
+  ↓
+Missing Value Handling
+  ↓
+Categorical Encoding
+  ↓
+Feature Selection & Normalization
+  ↓
+Train/Test Split (75/25)
+  ↓
+Autoencoder Training (with early stopping)
+  ↓
+Anomaly Injection (2% noise)
+  ↓
+Threshold Grid Search (400 thresholds)
+  ↓
+Performance Evaluation
+  ↓
+Blockchain Logging
+  ↓
+Reports & Visualizations
+```
+
+---
+
 ## Development Timeline
 
 ### Phase 1: Foundation & Initial Configuration

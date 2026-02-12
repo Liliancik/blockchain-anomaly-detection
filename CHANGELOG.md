@@ -8,6 +8,30 @@ This file serves as the **detailed tracker** for all development, experiments, f
 
 ---
 
+## Latest Updates
+
+### Data Visualization & Documentation (2026-02-12)
+
+- **Created**: `visualize_data.ipynb` — Comprehensive data exploration notebook
+- **Generated Visualizations**:
+  - Numeric feature distributions (7 features: Hours_Studied, Attendance, Sleep_Hours, Previous_Scores, Tutoring_Sessions, Physical_Activity, Exam_Score)
+  - Categorical feature distributions (13 features with value counts)
+  - Correlation heatmap showing feature relationships
+  - Exam_Score target analysis (distribution, box plot, cumulative distribution)
+  - Dataset overview summary (metadata, missing values, feature composition)
+  
+- **Key Findings**:
+  - Dataset: 6,607 records, 20 features (7 numeric, 13 categorical)
+  - No missing values in numeric features
+  - Exam_Score correlations: Attendance (0.58), Hours_Studied (0.45)
+  - Target distribution: μ=67.24, σ=3.89, range [55, 101]
+
+- **Note**: Exam_Score is NOT removed in feature engineering (not in `label_like` list in `preprocessing.py`), so it remains as a regular feature for autoencoder input
+
+- **Status**: ✅ Complete — All visualizations saved to `outputs/`
+
+---
+
 ## Development Timeline
 
 ### Phase 1: Foundation & Initial Configuration

@@ -28,6 +28,33 @@ This file serves as the **detailed tracker** for all development, experiments, f
 
 - **Note**: Exam_Score is NOT removed in feature engineering (not in `label_like` list in `preprocessing.py`), so it remains as a regular feature for autoencoder input
 
+- **Data Processing Pipeline** (implemented in `src/preprocessing.py`):
+  1. **Missing Value Handling** (`handle_missing()`):
+     - Numeric columns: Fill with median
+     - Categorical columns: Fill with mode
+     - Result: NO missing values detected in output
+  
+  2. **Categorical Encoding** (`encode_categorical()`):
+     - One-hot encoding via `pd.get_dummies()`
+     - Drops first category to avoid multicollinearity
+     - 13 categorical features expanded to create final feature set
+  
+  3. **Feature Selection** (`select_features()`):
+     - Removes label-like columns: `["FinalGrade", "PassFail", "ExamResult"]`
+     - Exam_Score NOT removed (not in exclusion list)
+     - Retains ALL numeric features including Exam_Score for model training
+  
+  4. **Feature Normalization** (`normalize_features()`):
+     - Applies StandardScaler (zero-mean, unit variance)
+     - Fit on training data only
+     - Transformed applied to train/validation/test consistently
+  
+- **Pipeline Flow in `run_pipeline.py`**:
+  ```
+  Load CSV → handle_missing() → encode_categorical() → select_features()
+  → train_test_split(75/25) → normalize_features() → Autoencoder training
+  ```
+
 - **Status**: ✅ Complete — All visualizations saved to `outputs/`
 
 ---

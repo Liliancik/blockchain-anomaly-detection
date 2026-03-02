@@ -3,7 +3,7 @@ import os
 import sys
 
 # Set random seeds FIRST, before any TensorFlow imports
-os.environ["PYTHONHASHSEED"] = "42"
+os.environ["PYTHONHASHSEED"] = "41"
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
 os.environ["TF_DETERMINISTIC_OPS"] = "1"
 

@@ -138,8 +138,8 @@ def main():
     print(f"  Loaded: {X.shape[0]} samples, {X.shape[1]} features")
 
     # ========== SPLIT TRAIN/TEST ==========
-    print("[2/6] Splitting train/test (70% train, 30% test)...")
-    X_train_raw, X_test_raw = train_test_split(X, test_size=0.30, random_state=42)
+    print("[2/6] Splitting train/test (75% train, 25% test)...")
+    X_train_raw, X_test_raw = train_test_split(X, test_size=0.25, random_state=42)
     print(f"  Train: {X_train_raw.shape[0]} samples (clean)")
     print(f"  Test:  {X_test_raw.shape[0]} samples (will inject anomalies)")
 
@@ -161,7 +161,7 @@ def main():
 
     # ========== TRAIN AUTOENCODER ==========
     print("[4/6] Training Autoencoder on clean training data...")
-    autoencoder, _ = train_detector(X_train_scaled, epochs=50, batch_size=16)
+    autoencoder, _ = train_detector(X_train_scaled, epochs=80, batch_size=16)
     ae_scores = score_anomalies(autoencoder, X_test_injected)
     ae_threshold = tune_threshold_best_f1(ae_scores, y_test)
     ae_pred = (ae_scores > ae_threshold["threshold"]).astype(int)
@@ -170,7 +170,7 @@ def main():
     print(f"  Validation F1: {ae_threshold['f1']:.4f}")
 
     # ========== TRAIN ISOLATION FOREST ==========
-    print("[4/6] Training Isolation Forest on clean training data...")
+    print("[5/6] Training Isolation Forest on clean training data...")
     iso_forest = IsolationForest(
         contamination=args.frac,  # Set expected contamination rate
         random_state=42,

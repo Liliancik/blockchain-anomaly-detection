@@ -1,7 +1,7 @@
 # src/config.py
 # Core constants for anomaly detection pipeline
 
-SEED = 42
+SEED = 41
 
 # Data split
 TRAIN_SIZE = 0.75

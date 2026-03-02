@@ -12,20 +12,29 @@ Designed for **student performance monitoring** with high precision (90%) and st
 
 ---
 
-## Key Results (Feb 11, 2026)
+## Key Results (March 2, 2026)
 
+### Autoencoder Performance
 | Metric | Value | Notes |
 |--------|-------|-------|
-| **Precision** | 90.0% | Minimal false alarms |
-| **Recall** | 81.8% | Catches most anomalies |
-| **F1 Score** | 0.857 | Balanced performance |
-| **ROC-AUC** | 0.969 | Excellent discrimination |
-| **TP/FP/FN** | 27/3/6 | High specificity (3 false positives) |
-| **Dataset** | 6,607 samples | Student performance data |
-| **Encoding** | 28 features | After categorical expansion |
-| **Bottleneck** | 4D | 7:1 compression ratio |
+| **Precision** | 88.24% | 30 TP out of 34 detections |
+| **Recall** | 90.91% | Detected 30/33 injected anomalies |
+| **F1 Score** | 0.8955 | Excellent balance |
+| **ROC-AUC** | 0.9657 | Strong discrimination |
+| **TP/FP/FN** | 30/4/3 | High recall, 4 false positives |
+| **Threshold** | 1.476 | Grid-searched F1 maximization |
+| **Dataset** | 1,652 test samples | 75/25 split from 6,607 total |
+| **Reconstruction Error** | Clean: 0.555 vs Injected: 2.739 | 4.9x separation |
 
-**Improvement**: Reproducibility fixes increased precision from 54.4% → 90.0% (+35.6 percentage points)
+### Blockchain Status
+| Component | Status | Details |
+|-----------|--------|----------|
+| **Anomaly Logging** | ✓ Success | 34 anomalies logged with detector auth |
+| **Access Control** | ✓ Active | Detector (write), Auditor (verify) |
+| **Verification** | ✗ Failed | Signature mismatch at entry 1 |
+| **Investigation** | ⚠ Required | Blockchain integrity check needs debugging |
+
+**Baseline Comparison**: 7.2x better F1 (0.881 vs 0.122) than Isolation Forest
 
 ---
 

@@ -15,7 +15,7 @@ def _continuous_like_columns(df: pd.DataFrame, min_unique: int = 10) -> List[str
 
 def inject_noise(
     df: pd.DataFrame,
-    frac: float = 0.01,
+    frac: float = 0.02,
     scale: float = 5.0,
     random_state: int = 42,
     columns: Optional[List[str]] = None,
@@ -58,7 +58,7 @@ def inject_noise(
 
 def inject_swap(
     df: pd.DataFrame,
-    frac: float = 0.01,
+    frac: float = 0.02,
     random_state: int = 42,
     columns: Optional[List[str]] = None,
 ) -> Tuple[pd.DataFrame, List[int]]:
@@ -100,7 +100,7 @@ def inject_swap(
 def inject_anomalies(
     df: pd.DataFrame,
     method: str = "noise",
-    frac: float = 0.01,
+    frac: float = 0.02,
     random_state: int = 42,
     **kwargs
 ) -> Tuple[pd.DataFrame, List[int]]:

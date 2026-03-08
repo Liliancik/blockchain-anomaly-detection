@@ -1,20 +1,15 @@
-# src/config.py
-# Core constants for anomaly detection pipeline
+"""Configuration constants for anomaly detection pipeline."""
 
-SEED = 41
+SEED = 41  # Random seed for reproducibility
 
-# Data split
 TRAIN_SIZE = 0.75
 TEST_SIZE = 0.25
 
-# Anomaly injection (constant)
-INJECTION_FRAC = 0.02
-NOISE_SCALE = 5.0
+INJECTION_FRAC = 0.02  # Synthetic anomalies for evaluation
+NOISE_SCALE = 5.0  # Noise scale in std deviations
 
-# Autoencoder
-BOTTLENECK_DIM = 4
+BOTTLENECK_DIM = 4  # Compression dimension
 EPOCHS = 80
 BATCH_SIZE = 16
 
-# Blockchain
-LEDGER_PATH = "blockchain_ledger.jsonl"
+LEDGER_PATH = "blockchain_ledger.jsonl"  # Blockchain storage

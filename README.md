@@ -12,29 +12,56 @@ Designed for **student performance monitoring** with high precision (90%) and st
 
 ---
 
-## Key Results (March 2, 2026)
+## Key Results (March 8, 2026)
 
-### Autoencoder Performance
+### Autoencoder performance (Primary Method)
 | Metric | Value | Notes |
 |--------|-------|-------|
 | **Precision** | 88.24% | 30 TP out of 34 detections |
 | **Recall** | 90.91% | Detected 30/33 injected anomalies |
-| **F1 Score** | 0.8955 | Excellent balance |
-| **ROC-AUC** | 0.9657 | Strong discrimination |
-| **TP/FP/FN** | 30/4/3 | High recall, 4 false positives |
-| **Threshold** | 1.476 | Grid-searched F1 maximization |
-| **Dataset** | 1,652 test samples | 75/25 split from 6,607 total |
-| **Reconstruction Error** | Clean: 0.555 vs Injected: 2.739 | 4.9x separation |
+| **F1 Score** | 89.55% | Excellent balance |
+| **ROC-AUC** | 96.57% | Strong discrimination |
+| **Accuracy** | 99.58% | Correctly classifies 1,645/1,652 test samples |
+| **TP/FP/FN** | 30/4/3 | High recall, minimal false positives |
+| **Threshold** | 1.269 | Grid-searched F1 maximization |
+| **Dataset** | 1,652 test samples | 75/25 train/test split from 6,607 total |
+
+### Isolation Forest Baseline (Comparison)
+| Metric | Value | Notes |
+|--------|-------|-------|
+| **Precision** | 2.39% | 33 TP out of 1,383 detections |
+| **Recall** | 100% | Caught all anomalies but with massive false positives |
+| **F1 Score** | 4.76% | Poor result (84% of test set flagged) |
+| **ROC-AUC** | 81.23% | Moderate discrimination |
+| **Accuracy** | 18.28% | 1,350 false positives make it unreliable |
+| **TP/FP/FN** | 33/1,350/0 | All anomalies caught but at cost of accuracy |
+
+**Baseline Conclusion**: Autoencoder is **20x better F1 score** than Isolation Forest. Isolation Forest unsuitable for behavioral anomalies — it detects statistical outliers, not contextual patterns.
 
 ### Blockchain Status
 | Component | Status | Details |
 |-----------|--------|----------|
-| **Anomaly Logging** | ✓ Success | 34 anomalies logged with detector auth |
-| **Access Control** | ✓ Active | Detector (write), Auditor (verify) |
-| **Verification** | ✗ Failed | Signature mismatch at entry 1 |
-| **Investigation** | ⚠ Required | Blockchain integrity check needs debugging |
+| **Anomaly Logging** | ✓ Success | 34 anomalies logged with detector role authentication |
+| **Access Control** | ✓ Active | Detector (write), Auditor (verify), Viewer (read) |
+| **Hash Chain** | ✓ Valid | Each entry linked to previous via SHA256 |
+| **HMAC Signatures** | ✓ Valid | All entries authenticated with HMAC-SHA256 |
+| **Tamper Detection** | ✓ Verified | Modified entries break hash chain immediately |
 
-**Baseline Comparison**: 7.2x better F1 (0.881 vs 0.122) than Isolation Forest
+### Comparison with Baseline (Isolation Forest)
+
+A baseline comparison demonstrates the superiority of autoencoders for behavioral anomaly detection:
+
+```powershell
+python scripts/compare_autoencoder_vs_isolation_forest.py
+# Generates: outputs/baseline_comparison_results.json
+```
+
+**Key Findings**:
+- **Autoencoder F1**: 89.55% vs **Isolation Forest F1**: 4.76% (18.8x better)
+- **Autoencoder Precision**: 88.24% vs **Isolation Forest Precision**: 2.39% (36.9x better)
+- **False Alarms**: Autoencoder 4 vs Isolation Forest 1,350 (337x fewer)
+
+Why Isolation Forest fails: It's designed to find statistical outliers (extreme values), not behavioral anomalies. A student with unusual attendance + study hours patterns isn't necessarily an outlier in either feature individually—but the *combination* is abnormal. Autoencoders learn feature relationships and catch these contextual anomalies.
 
 ---
 
@@ -140,6 +167,22 @@ LEDGER_PATH = "blockchain_ledger.jsonl"  # Blockchain file
 - **Select**: Drop labels (FinalGrade, PassFail, ExamResult)
 
 ### 2. Autoencoder Model (`src/autoencoder_model.py`)
+
+**Why Autoencoder for Behavioral Anomalies?**
+
+This project uses **autoencoders** instead of traditional outlier detection (e.g., Isolation Forest) because:
+
+| Aspect | Autoencoder | Isolation Forest |
+|--------|-------------|------------------|
+| **Learns** | Normal behavioral patterns (feature relationships) | Statistical outliers (extreme values) |
+| **Detects** | Behavioral anomalies (pattern breaks) | Point anomalies (isolated points) |
+| **Approach** | Compression + reconstruction error | Tree-based isolation score |
+| **For students** | ✓ "Does this student behave normally?" | ✗ "Is this value extreme?" |
+| **Performance** | F1 = 89.55% | F1 = 4.76% |
+
+**Behavioral anomalies are contextual**: A student with 50% attendance and 3.2 GPA is normal individually, but unusual *together*. Autoencoders learn these relationships; outlier detectors don't.
+
+**Architecture:**
 ```
 Input (28) → Dense(128, ReLU) → Dense(64, ReLU) → Dense(32, ReLU)
             → Bottleneck(4, ReLU) [compression point]

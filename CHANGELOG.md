@@ -14,6 +14,12 @@ This file serves as the **detailed tracker** for all development, experiments, f
 **ISOLATION FOREST**
 Isolation Forest detects anomalies by randomly splitting the data into trees and measuring how quickly a data point becomes isolated. Points that require fewer splits to isolate are considered anomalies because they differ significantly from normal patterns.
 
+1. Sample the data – A small random subset of the dataset is used for each tree.
+2. Build random trees – Data is repeatedly split randomly until points are isolated.
+3. Calculate anomaly score:
+  - Scores close to 1 → likely anomaly
+  - Scores close to 0 → normal data
+
 **ISOLATION FOREST PERFORMANCE**
 - **Precision**: 14.7% 
 - **Recall**: 15.15% 

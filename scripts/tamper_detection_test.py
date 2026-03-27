@@ -202,7 +202,7 @@ def test_tamper_detection():
     print(f"  4. Recompute NEXT entry's prev_hash (points to this one) ✗ Would break chain")
     print(f"  5. Update NEXT entry's hash ✗ Would need to update all downstream")
     print(f"  6. Repeat for ALL subsequent entries (hash chain effect) ✗ Impossible")
-    print(f"\nResult: One modification requires modifying ENTIRE remaining blockchain"))
+    print(f"\nResult: One modification requires modifying ENTIRE remaining blockchain")
     
     print(f"\nBut even if they successfully modify all entries:")
     print(f"  ✓ We have backup of original entry → can detect mismatch")

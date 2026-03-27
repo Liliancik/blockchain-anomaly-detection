@@ -11,6 +11,8 @@ This file serves as the **detailed tracker** for all development, experiments, f
 ## Latest Updates
 
 ### Baseline Comparison Analysis - Isolation Forest vs Autoencoder (2026-03-08)
+**ISOLATION FOREST**
+Isolation Forest detects anomalies by randomly splitting the data into trees and measuring how quickly a data point becomes isolated. Points that require fewer splits to isolate are considered anomalies because they differ significantly from normal patterns.
 
 **ISOLATION FOREST PERFORMANCE**
 - **Precision**: 14.7% 

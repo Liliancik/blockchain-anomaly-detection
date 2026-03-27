@@ -174,7 +174,7 @@ def main():
     iso_forest = IsolationForest(
         contamination=args.frac,  # Set expected contamination rate
         random_state=41,
-        n_estimators=100,
+        n_estimators=200,  # More trees for better performance
         max_samples="auto",
     )
     iso_forest.fit(X_train_scaled)

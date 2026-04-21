@@ -13,13 +13,14 @@ Key advantages:
 import numpy as np
 from sklearn.ensemble import IsolationForest
 from sklearn.metrics import f1_score, precision_score, recall_score
+from . import config
 
 
 def train_isolation_forest(
     X_train: np.ndarray,
-    contamination: float = 0.02,
-    n_estimators: int = 100,
-    random_state: int = 41
+    contamination: float = None,
+    n_estimators: int = None,
+    random_state: int = None
 ) -> IsolationForest:
     """Train Isolation Forest on training data.
     
@@ -32,13 +33,23 @@ def train_isolation_forest(
     Args:
         X_train: Training data (shape: n_samples × n_features)
         contamination: Expected proportion of anomalies (0.0-0.5)
-                      Used to determine decision threshold
+                      If None, uses config.IF_CONTAMINATION
         n_estimators: Number of isolation trees to build
+                     If None, uses config.IF_N_ESTIMATORS
         random_state: Seed for reproducibility
+                     If None, uses config.SEED
     
     Returns:
         Trained IsolationForest model ready for prediction/scoring
     """
+    # Use config defaults if not provided
+    if contamination is None:
+        contamination = config.IF_CONTAMINATION
+    if n_estimators is None:
+        n_estimators = config.IF_N_ESTIMATORS
+    if random_state is None:
+        random_state = config.SEED
+    
     model = IsolationForest(
         contamination=contamination,
         n_estimators=n_estimators,
@@ -110,7 +121,7 @@ def predict_anomalies_if(
 def get_isolation_forest_threshold(
     model: IsolationForest,
     X: np.ndarray,
-    contamination: float = 0.02
+    contamination: float = None
 ) -> float:
     """Get the anomaly threshold for Isolation Forest predictions.
     
@@ -118,10 +129,14 @@ def get_isolation_forest_threshold(
         model: Trained IsolationForest model
         X: Data to compute threshold on
         contamination: Contamination parameter (fraction of anomalies)
+                      If None, uses config.IF_CONTAMINATION
     
     Returns:
         Threshold value for anomaly scores
     """
+    if contamination is None:
+        contamination = config.IF_CONTAMINATION
+    
     scores = score_anomalies_if(model, X)
     # Use quantile corresponding to contamination
     q = max(0.0, min(1.0, 1.0 - contamination))

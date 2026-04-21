@@ -13,7 +13,7 @@ EPOCHS = 80
 BATCH_SIZE = 16
 
 # Isolation Forest parameters
-IF_N_ESTIMATORS = 100  # Number of isolation trees
+IF_N_ESTIMATORS = 200  # Number of isolation trees
 IF_MAX_SAMPLES = "auto"  # Number of samples to draw for training each tree
 IF_CONTAMINATION = 0.2  # Match injection rate for IF to learn the pattern
 

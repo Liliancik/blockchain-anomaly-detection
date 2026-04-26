@@ -47,6 +47,7 @@ from src.isolation_forest_baseline import (
     train_isolation_forest, score_anomalies_if, get_isolation_forest_threshold, 
     optimize_threshold_if
 )
+from src.vae_baseline import train_vae, score_anomalies_vae, predict_anomalies_vae
 from src import config
 
 # Now that TensorFlow is imported (via autoencoder_model), configure it for determinism
@@ -144,11 +145,12 @@ def evaluate_model(y_true, y_pred, scores, model_name="Model"):
     }
 
 
-def format_metrics_table(metrics_ae, metrics_if):
-    """Format evaluation metrics as comparison table.
+def format_metrics_table(metrics_ae, metrics_vae, metrics_if):
+    """Format evaluation metrics as comparison table for three models.
     
     Args:
         metrics_ae: Autoencoder metrics dictionary
+        metrics_vae: Variational Autoencoder metrics dictionary
         metrics_if: Isolation Forest metrics dictionary
     
     Returns:
@@ -165,31 +167,37 @@ def format_metrics_table(metrics_ae, metrics_if):
     ]
     
     lines = []
-    lines.append("\n" + "=" * 80)
-    lines.append("COMPARISON: AUTOENCODER vs ISOLATION FOREST")
-    lines.append("=" * 80)
-    lines.append(f"{'Metric':<30} {'Autoencoder':>20} {'Isolation Forest':>20}")
-    lines.append("-" * 80)
+    lines.append("\n" + "=" * 100)
+    lines.append("COMPARISON: AUTOENCODER vs VARIATIONAL AUTOENCODER vs ISOLATION FOREST")
+    lines.append("=" * 100)
+    lines.append(f"{'Metric':<30} {'Autoencoder':>20} {'VAE':>20} {'Isolation Forest':>20}")
+    lines.append("-" * 100)
     
     for metric_name, metric_key in metrics_to_show:
         ae_val = metrics_ae[metric_key]
+        vae_val = metrics_vae[metric_key]
         if_val = metrics_if[metric_key]
         
         # Determine winner (higher is better for all these metrics)
         ae_str = f"{ae_val:.4f}"
+        vae_str = f"{vae_val:.4f}"
         if_str = f"{if_val:.4f}"
         
-        if ae_val > if_val:
+        # Find the best value
+        best_val = max(ae_val, vae_val, if_val)
+        if abs(ae_val - best_val) < 1e-6:
             ae_str += " ✓"
-        elif if_val > ae_val:
+        if abs(vae_val - best_val) < 1e-6:
+            vae_str += " ✓"
+        if abs(if_val - best_val) < 1e-6:
             if_str += " ✓"
         
-        lines.append(f"{metric_name:<30} {ae_str:>20} {if_str:>20}")
+        lines.append(f"{metric_name:<30} {ae_str:>20} {vae_str:>20} {if_str:>20}")
     
-    lines.append("-" * 80)
-    lines.append(f"{'Detections':<30} {metrics_ae['tp']:>20} {metrics_if['tp']:>20}")
-    lines.append(f"{'False Alarms':<30} {metrics_ae['fp']:>20} {metrics_if['fp']:>20}")
-    lines.append("=" * 80)
+    lines.append("-" * 100)
+    lines.append(f"{'Detections':<30} {metrics_ae['tp']:>20} {metrics_vae['tp']:>20} {metrics_if['tp']:>20}")
+    lines.append(f"{'False Alarms':<30} {metrics_ae['fp']:>20} {metrics_vae['fp']:>20} {metrics_if['fp']:>20}")
+    lines.append("=" * 100)
     
     return "\n".join(lines)
 
@@ -320,9 +328,26 @@ def main(data_dir: str = "data", results_dir: str = "results"):
     print("✓ Autoencoder training completed")
     print(f"  Initial threshold: {threshold_ae:.5f}")
 
-    # STEP 5: Train ISOLATION FOREST
+    # STEP 5: Train VARIATIONAL AUTOENCODER
     print("\n" + "=" * 80)
-    print("STEP 5: TRAINING ISOLATION FOREST")
+    print("STEP 5: TRAINING VARIATIONAL AUTOENCODER (VAE)")
+    print("=" * 80)
+    
+    vae, threshold_vae = train_vae(
+        X_train_scaled,
+        contamination=args.frac,
+        latent_dim=config.BOTTLENECK_DIM,
+        epochs=config.EPOCHS,
+        batch_size=config.BATCH_SIZE,
+        random_state=config.SEED
+    )
+    
+    print("✓ Variational Autoencoder training completed")
+    print(f"  Initial threshold: {threshold_vae:.5f}")
+
+    # STEP 6: Train ISOLATION FOREST
+    print("\n" + "=" * 80)
+    print("STEP 6: TRAINING ISOLATION FOREST")
     print("=" * 80)
     
     iso_forest = train_isolation_forest(
@@ -334,9 +359,9 @@ def main(data_dir: str = "data", results_dir: str = "results"):
     
     print("✓ Isolation Forest training completed")
 
-    # STEP 6: Score and predict on test set
+    # STEP 7: Score and predict on test set
     print("\n" + "=" * 80)
-    print("STEP 6: EVALUATING MODELS ON TEST SET")
+    print("STEP 7: EVALUATING MODELS ON TEST SET")
     print("=" * 80)
     
     # Autoencoder scores and F1-optimized threshold
@@ -344,30 +369,40 @@ def main(data_dir: str = "data", results_dir: str = "results"):
     ae_threshold_opt = optimize_threshold_f1(scores_ae, y_true)
     preds_ae = np.where(scores_ae > ae_threshold_opt["threshold"], -1, 1)
     
+    # Variational Autoencoder scores and F1-optimized threshold
+    scores_vae = score_anomalies_vae(vae, X_test_corrupted)
+    vae_threshold_opt = optimize_threshold_f1(scores_vae, y_true)
+    preds_vae = np.where(scores_vae > vae_threshold_opt["threshold"], -1, 1)
+    
     # Isolation Forest scores (using decision_function for better discrimination) and F1-optimized threshold
     iso_scores = score_anomalies_if(iso_forest, X_test_corrupted)
     if_threshold_opt = optimize_threshold_if(iso_forest, X_test_corrupted, y_true)
     preds_if = np.where(iso_scores > if_threshold_opt["threshold"], -1, 1)
     
+    
     print(f"✓ Autoencoder threshold (F1-optimized, 5-99.9%): {ae_threshold_opt['threshold']:.5f}")
     print(f"  F1: {ae_threshold_opt['f1']:.4f}, Precision: {ae_threshold_opt['precision']:.4f}, Recall: {ae_threshold_opt['recall']:.4f}")
     print(f"  Score range: [{scores_ae.min():.5f}, {scores_ae.max():.5f}]")
+    print(f"✓ Variational Autoencoder threshold (F1-optimized, 5-99.9%): {vae_threshold_opt['threshold']:.5f}")
+    print(f"  F1: {vae_threshold_opt['f1']:.4f}, Precision: {vae_threshold_opt['precision']:.4f}, Recall: {vae_threshold_opt['recall']:.4f}")
+    print(f"  Score range: [{scores_vae.min():.5f}, {scores_vae.max():.5f}]")
     print(f"✓ Isolation Forest threshold (F1-optimized, 5-99.9%): {if_threshold_opt['threshold']:.5f}")
     print(f"  F1: {if_threshold_opt['f1']:.4f}, Precision: {if_threshold_opt['precision']:.4f}, Recall: {if_threshold_opt['recall']:.4f}")
     print(f"  Score range: [{iso_scores.min():.5f}, {iso_scores.max():.5f}]")
 
-    # STEP 7: Evaluate both models
+    # STEP 8: Evaluate all models
     print("\n" + "=" * 80)
-    print("STEP 7: COMPUTING EVALUATION METRICS")
+    print("STEP 8: COMPUTING EVALUATION METRICS")
     print("=" * 80)
     
     metrics_ae = evaluate_model(y_true, preds_ae, scores_ae, "Autoencoder")
+    metrics_vae = evaluate_model(y_true, preds_vae, scores_vae, "Variational Autoencoder")
     metrics_if = evaluate_model(y_true, preds_if, iso_scores, "Isolation Forest")
     
-    print("✓ Evaluation completed for both models")
+    print("✓ Evaluation completed for all models")
 
-    # STEP 8: Display results
-    print(format_metrics_table(metrics_ae, metrics_if))
+    # STEP 9: Display results
+    print(format_metrics_table(metrics_ae, metrics_vae, metrics_if))
 
     # STEP 9: Save detailed results
     print("\n" + "=" * 80)
@@ -387,8 +422,10 @@ def main(data_dir: str = "data", results_dir: str = "results"):
         else:
             return obj
     
+    
     comparison_results = {
         "autoencoder": convert_to_serializable(metrics_ae),
+        "variational_autoencoder": convert_to_serializable(metrics_vae),
         "isolation_forest": convert_to_serializable(metrics_if),
         "test_set_size": int(len(X_test_corrupted)),
         "n_anomalies_injected": int(n_anomalies),
@@ -406,8 +443,10 @@ def main(data_dir: str = "data", results_dir: str = "results"):
     predictions_df = pd.DataFrame({
         "y_true": y_true,
         "ae_pred": preds_ae,
+        "vae_pred": preds_vae,
         "if_pred": preds_if,
         "ae_score": scores_ae,
+        "vae_score": scores_vae,
         "if_score": iso_scores,
         "is_injected_anomaly": np.isin(np.arange(len(y_true)), anomaly_indices),
     })
@@ -432,18 +471,6 @@ def main(data_dir: str = "data", results_dir: str = "results"):
     with open(roc_file, "w") as f:
         json.dump(roc_data_serializable, f, indent=2)
     print(f"✓ ROC data saved to {roc_file}")
-
-    # Summary
-    print("\n" + "=" * 80)
-    print("SUMMARY")
-    print("=" * 80)
-    print(f"Autoencoder F1 Score: {metrics_ae['f1']:.4f}")
-    print(f"Isolation Forest F1 Score: {metrics_if['f1']:.4f}")
-    print(f"Winner: {'Autoencoder' if metrics_ae['f1'] > metrics_if['f1'] else 'Isolation Forest'}")
-    print("\nAutoencoder ROC AUC: {:.4f}".format(metrics_ae['roc_auc']))
-    print("Isolation Forest ROC AUC: {:.4f}".format(metrics_if['roc_auc']))
-    print("=" * 80)
-
 
 if __name__ == "__main__":
     main(data_dir="data", results_dir="results")

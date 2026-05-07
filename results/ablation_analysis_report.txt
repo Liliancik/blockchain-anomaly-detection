@@ -1,0 +1,263 @@
+================================================================================
+ABLATION STUDY ANALYSIS REPORT
+================================================================================
+Timestamp: 2026-05-07T20:44:25.870060
+Random Seeds: 41, 42, 43
+
+EXPERIMENTAL SETUP
+--------------------------------------------------------------------------------
+  Random Seeds: 41, 42, 43
+  Purpose: Systematic ablation study of autoencoder components
+  Components tested: bottleneck dimension, network depth, dropout rate,
+                     activation function, feature subset, batch size, epoch budget
+
+DATA SUMMARY
+--------------------------------------------------------------------------------
+  Total features: 28
+  Training samples: 4955 (normal only)
+  Test samples: 1652
+  Normal test samples: N/A
+  Abnormal test samples: N/A
+
+BASELINE PERFORMANCE
+--------------------------------------------------------------------------------
+  Configuration:
+    bottleneck_dim: 4
+    depth: 3
+    dropout_rate: 0.1
+    activation: relu
+    batch_size: 16
+    epochs: 80
+    learning_rate: 0.0005
+    noise_scale: 6.0
+    injection_frac: 0.02
+
+  Metrics (Seed 41):
+    F1 Score:  0.9254
+    ROC-AUC:   0.9981
+    Accuracy:  0.9970
+    Precision: 0.9118
+    Recall:    0.9394
+    Specificity: 0.9981
+
+COMPONENT IMPACT ANALYSIS
+--------------------------------------------------------------------------------
+
+BOTTLENECK DIMENSION
+  ----------------------------------------------------------------------------
+  bottleneck_2
+    Seed 41: F1=0.9254 ROC-AUC=0.9986
+    Seed 42: F1=0.9524 ROC-AUC=0.9991
+    Seed 43: F1=0.9552 ROC-AUC=0.9993
+  bottleneck_4
+    Seed 41: F1=0.9254 ROC-AUC=0.9981
+    Seed 42: F1=0.9143 ROC-AUC=0.9990
+    Seed 43: F1=0.9552 ROC-AUC=0.9966
+  bottleneck_8
+    Seed 41: F1=0.9524 ROC-AUC=0.9982
+    Seed 42: F1=0.9552 ROC-AUC=0.9975
+    Seed 43: F1=0.9552 ROC-AUC=0.9974
+  bottleneck_16
+    Seed 41: F1=0.9552 ROC-AUC=0.9992
+    Seed 42: F1=0.9552 ROC-AUC=0.9997
+    Seed 43: F1=0.9552 ROC-AUC=0.9981
+  bottleneck_32
+    Seed 41: F1=0.9552 ROC-AUC=0.9981
+    Seed 42: F1=0.9254 ROC-AUC=0.9990
+    Seed 43: F1=0.9524 ROC-AUC=0.9990
+  ✓ Best: bottleneck_16                  F1=0.9552 (+3.23%)
+
+NETWORK DEPTH
+  ----------------------------------------------------------------------------
+  depth_1
+    Seed 41: F1=0.9254 ROC-AUC=0.9991
+    Seed 42: F1=0.9254 ROC-AUC=0.9989
+    Seed 43: F1=0.9524 ROC-AUC=0.9989
+  depth_2
+    Seed 41: F1=0.9552 ROC-AUC=0.9998
+    Seed 42: F1=0.9206 ROC-AUC=0.9976
+    Seed 43: F1=0.9552 ROC-AUC=0.9965
+  depth_3
+    Seed 41: F1=0.9254 ROC-AUC=0.9981
+    Seed 42: F1=0.9143 ROC-AUC=0.9990
+    Seed 43: F1=0.9552 ROC-AUC=0.9966
+  depth_4
+    Seed 41: F1=0.9552 ROC-AUC=0.9969
+    Seed 42: F1=0.9524 ROC-AUC=0.9994
+    Seed 43: F1=0.9254 ROC-AUC=0.9997
+  ✓ Best: depth_4                        F1=0.9552 (+2.05%)
+
+DROPOUT RATE
+  ----------------------------------------------------------------------------
+  dropout_0.0
+    Seed 41: F1=0.9552 ROC-AUC=0.9969
+    Seed 42: F1=0.9552 ROC-AUC=0.9993
+    Seed 43: F1=0.9254 ROC-AUC=0.9969
+  dropout_0.1
+    Seed 41: F1=0.9254 ROC-AUC=0.9981
+    Seed 42: F1=0.9143 ROC-AUC=0.9990
+    Seed 43: F1=0.9552 ROC-AUC=0.9966
+  dropout_0.2
+    Seed 41: F1=0.9552 ROC-AUC=0.9994
+    Seed 42: F1=0.9254 ROC-AUC=0.9972
+    Seed 43: F1=0.9552 ROC-AUC=0.9992
+  dropout_0.3
+    Seed 41: F1=0.9524 ROC-AUC=0.9969
+    Seed 42: F1=0.9552 ROC-AUC=0.9978
+    Seed 43: F1=0.9254 ROC-AUC=0.9983
+  ✓ Best: dropout_0.2                    F1=0.9552 (+2.15%)
+
+ACTIVATION FUNCTION
+  ----------------------------------------------------------------------------
+  activation_relu
+    Seed 41: F1=0.9254 ROC-AUC=0.9981
+    Seed 42: F1=0.9143 ROC-AUC=0.9990
+    Seed 43: F1=0.9552 ROC-AUC=0.9966
+  activation_sigmoid
+    Seed 41: F1=0.9524 ROC-AUC=0.9979
+    Seed 42: F1=0.9206 ROC-AUC=0.9976
+    Seed 43: F1=0.9254 ROC-AUC=0.9987
+  activation_tanh
+    Seed 41: F1=0.9552 ROC-AUC=0.9979
+    Seed 42: F1=0.9552 ROC-AUC=0.9980
+    Seed 43: F1=0.9552 ROC-AUC=0.9976
+  ✓ Best: activation_tanh                F1=0.9552 (+3.23%)
+
+BATCH SIZE
+  ----------------------------------------------------------------------------
+  batch_size_8
+    Seed 41: F1=0.9254 ROC-AUC=0.9978
+    Seed 42: F1=0.9552 ROC-AUC=0.9988
+    Seed 43: F1=0.9552 ROC-AUC=0.9990
+  batch_size_16
+    Seed 41: F1=0.9254 ROC-AUC=0.9981
+    Seed 42: F1=0.9143 ROC-AUC=0.9990
+    Seed 43: F1=0.9552 ROC-AUC=0.9966
+  batch_size_32
+    Seed 41: F1=0.9552 ROC-AUC=0.9988
+    Seed 42: F1=0.9552 ROC-AUC=0.9992
+    Seed 43: F1=0.9552 ROC-AUC=0.9970
+  ✓ Best: batch_size_32                  F1=0.9552 (+3.23%)
+
+EPOCHS
+  ----------------------------------------------------------------------------
+  epochs_40
+    Seed 41: F1=0.9254 ROC-AUC=0.9991
+    Seed 42: F1=0.9552 ROC-AUC=0.9988
+    Seed 43: F1=0.9552 ROC-AUC=0.9984
+  epochs_80
+    Seed 41: F1=0.9254 ROC-AUC=0.9981
+    Seed 42: F1=0.9143 ROC-AUC=0.9990
+    Seed 43: F1=0.9552 ROC-AUC=0.9966
+  epochs_120
+    Seed 41: F1=0.9552 ROC-AUC=0.9987
+    Seed 42: F1=0.8889 ROC-AUC=0.9983
+    Seed 43: F1=0.9552 ROC-AUC=0.9968
+  ✓ Best: epochs_40                      F1=0.9552 (+2.15%)
+
+LEARNING RATE
+  ----------------------------------------------------------------------------
+  learning_rate_1e-04
+    Seed 41: F1=0.9254 ROC-AUC=0.9991
+    Seed 42: F1=0.9524 ROC-AUC=0.9988
+    Seed 43: F1=0.9552 ROC-AUC=0.9990
+  learning_rate_5e-04
+    Seed 41: F1=0.9254 ROC-AUC=0.9981
+    Seed 42: F1=0.9143 ROC-AUC=0.9990
+    Seed 43: F1=0.9552 ROC-AUC=0.9966
+  learning_rate_1e-03
+    Seed 41: F1=0.9524 ROC-AUC=0.9983
+    Seed 42: F1=0.9524 ROC-AUC=0.9974
+    Seed 43: F1=0.9552 ROC-AUC=0.9993
+  ✓ Best: learning_rate_1e-03            F1=0.9552 (+3.02%)
+
+NOISE SCALE
+  ----------------------------------------------------------------------------
+  noise_scale_2
+    Seed 41: F1=0.3922 ROC-AUC=0.8843
+    Seed 42: F1=0.3115 ROC-AUC=0.8826
+    Seed 43: F1=0.4681 ROC-AUC=0.8656
+  noise_scale_4
+    Seed 41: F1=0.8254 ROC-AUC=0.9879
+    Seed 42: F1=0.7458 ROC-AUC=0.9903
+    Seed 43: F1=0.8571 ROC-AUC=0.9822
+  noise_scale_6
+    Seed 41: F1=0.9254 ROC-AUC=0.9981
+    Seed 42: F1=0.9143 ROC-AUC=0.9990
+    Seed 43: F1=0.9552 ROC-AUC=0.9966
+  noise_scale_8
+    Seed 41: F1=0.9552 ROC-AUC=0.9992
+    Seed 42: F1=0.9552 ROC-AUC=0.9997
+    Seed 43: F1=0.9552 ROC-AUC=0.9985
+  noise_scale_10
+    Seed 41: F1=0.9552 ROC-AUC=0.9999
+    Seed 42: F1=0.9552 ROC-AUC=0.9999
+    Seed 43: F1=0.9552 ROC-AUC=0.9998
+  ✓ Best: noise_scale_8                  F1=0.9552 (+3.23%)
+
+INJECTION FRACTION
+  ----------------------------------------------------------------------------
+  injection_frac_0.01
+    Seed 41: F1=0.8667 ROC-AUC=0.9901
+    Seed 42: F1=0.8235 ROC-AUC=0.9976
+    Seed 43: F1=0.8667 ROC-AUC=0.9959
+  injection_frac_0.02
+    Seed 41: F1=0.9254 ROC-AUC=0.9981
+    Seed 42: F1=0.9143 ROC-AUC=0.9990
+    Seed 43: F1=0.9552 ROC-AUC=0.9966
+  injection_frac_0.05
+    Seed 41: F1=0.9571 ROC-AUC=0.9985
+    Seed 42: F1=0.9341 ROC-AUC=0.9972
+    Seed 43: F1=0.9571 ROC-AUC=0.9977
+  injection_frac_0.10
+    Seed 41: F1=0.9568 ROC-AUC=0.9887
+    Seed 42: F1=0.9375 ROC-AUC=0.9894
+    Seed 43: F1=0.9563 ROC-AUC=0.9883
+  ✓ Best: injection_frac_0.10            F1=0.9571 (+2.68%)
+
+
+================================================================================
+KEY FINDINGS & RECOMMENDATIONS
+================================================================================
+
+Best Overall Configuration:
+  Variant: bottleneck_16
+  Category: bottleneck_dimension
+  bottleneck_dim: 16
+  depth: 3
+  dropout_rate: 0.1
+  activation: relu
+  batch_size: 16
+  epochs: 80
+  learning_rate: 0.0005
+  noise_scale: 6.0
+  injection_frac: 0.02
+  threshold: 0.6117029651415619
+  Best Seed: 41
+  F1 Score: 0.9552
+  ROC-AUC: 0.9992
+  Improvement over baseline: +3.23%
+
+Baseline Performance by Seed:
+  Seed 41: F1=0.9254, ROC-AUC=0.9981
+  Seed 42: F1=0.9143, ROC-AUC=0.9990
+  Seed 43: F1=0.9552, ROC-AUC=0.9966
+  ✓ Best Seed: 43 (F1=0.9552)
+
+Component Sensitivity Ranking (by max F1 improvement):
+  bottleneck_dimension      +3.23%
+  network_depth             +2.05%
+  dropout_rate              +2.15%
+  activation_function       +3.23%
+  batch_size                +3.23%
+  epochs                    +2.15%
+  learning_rate             +3.02%
+  noise_scale               +3.23%
+  injection_fraction        +2.68%
+
+
+Recommendations:
+  1. Consider configurations that significantly improve F1 (>2% improvement)
+  2. Balance F1, Precision, and Recall based on use case requirements
+  3. Monitor for overfitting when using reduced feature sets
+  4. Test recommended configurations on hold-out test set before deployment

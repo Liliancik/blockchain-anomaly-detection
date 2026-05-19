@@ -27,7 +27,7 @@ from src import config
 from src.data_loader import load_data
 from src import preprocessing as prep
 from src.anomaly_injection import inject_anomalies
-from src.autoencoder_model import train_detector, score_anomalies, predict_anomalies
+from src.autoencoder_model import train_detector, score_anomalies, predict_anomalies, plot_loss_curves
 from src.blockchain_logger import PermissionedBlockchain
 
 import tensorflow as tf
@@ -128,7 +128,7 @@ def main(data_path="data/StudentPerformanceFactors.csv"):
     # The autoencoder learns to reconstruct normal data with low error.
     # Normal samples should have low reconstruction error, anomalies high error.
     print("\n[4] Training autoencoder...")
-    model, _ = train_detector(
+    model, _, history = train_detector(
         X_train_scaled,
         contamination=config.INJECTION_FRAC,
         bottleneck_dim=config.BOTTLENECK_DIM,
@@ -137,6 +137,10 @@ def main(data_path="data/StudentPerformanceFactors.csv"):
         val_split=0.15,  # Use 15% of train for validation
         random_state=config.SEED,
     )
+    
+    # Plot and save training/validation loss curves
+    print("\n[4b] Saving loss curves...")
+    plot_loss_curves(history, output_path="outputs/autoencoder_loss_curves.png")
 
     # 5) Inject synthetic anomalies into test data and find optimal detection threshold
     # Add noise to simulate real anomalies. Track which samples are injected (ground truth).

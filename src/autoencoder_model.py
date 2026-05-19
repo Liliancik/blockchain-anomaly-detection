@@ -6,6 +6,7 @@ fail to reconstruct properly (high error). The reconstruction error is used
 as an anomaly score.
 """
 import numpy as np
+import matplotlib.pyplot as plt
 
 # TensorFlow / Keras neural network library
 from tensorflow import keras
@@ -114,6 +115,7 @@ def train_detector(
     Returns:
         model: Trained autoencoder ready for anomaly detection
         threshold: Optimal decision boundary for classifying anomalies
+        history: Training history (loss curves for training and validation)
     """
     # Set random seeds for reproducible results across runs
     # This ensures hyperparameter tuning results are comparable
@@ -146,7 +148,7 @@ def train_detector(
     # shuffle=True: randomize batch order for better generalization
     # validation_split=0.15: hold out 15% of training data for validation
     # verbose=0: suppress output (clean console)
-    model.fit(
+    history = model.fit(
         X_train,
         X_train,
         epochs=epochs,
@@ -172,7 +174,7 @@ def train_detector(
     q = max(0.0, min(1.0, 1.0 - contamination))
     threshold = float(np.quantile(train_errors, q))
 
-    return model, threshold
+    return model, threshold, history
 
 
 def score_anomalies(model: keras.Model, X: np.ndarray) -> np.ndarray:
@@ -225,3 +227,28 @@ def predict_anomalies(model: keras.Model, X: np.ndarray, threshold: float) -> np
     # Apply threshold: high error → anomaly (-1), low error → normal (1)
     preds = np.where(errors > threshold, -1, 1)
     return preds
+
+
+def plot_loss_curves(history, output_path: str = "outputs/autoencoder_loss_curves.png"):
+    """Plot and save training/validation loss curves.
+    
+    Creates a visualization showing how the autoencoder's loss improved
+    during training on the training set and validation set. This helps
+    identify overfitting (when validation loss increases while training loss decreases).
+    
+    Args:
+        history: Training history object returned by model.fit()
+        output_path: Where to save the plot (default: outputs/autoencoder_loss_curves.png)
+    """
+    plt.figure(figsize=(10, 6))
+    plt.plot(history.history["loss"], label="Training Loss", linewidth=2)
+    plt.plot(history.history["val_loss"], label="Validation Loss", linewidth=2)
+    plt.xlabel("Epoch", fontsize=12)
+    plt.ylabel("Loss (MSE)", fontsize=12)
+    plt.title("Autoencoder Training/Validation Loss Curves", fontsize=14, fontweight="bold")
+    plt.legend(fontsize=11)
+    plt.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=100)
+    plt.close()
+    print(f"  ✓ Loss curves saved to {output_path}")

@@ -1,450 +1,795 @@
-﻿# blockchain-anomaly-detection
+﻿# Blockchain-Enabled Anomaly Detection in Educational Data with Autoencoders
+
+A machine learning system combining **autoencoder-based anomaly detection** with a **permissioned Proof-of-Authority (PoA) blockchain** for educational data provenance and integrity.
+
+The project uses the StudentPerformanceFactors dataset to detect unusual student profiles and records detected anomalies using replicated, cryptographically verified blockchain ledgers.
+
+---
 
 ## Overview
 
-A **production-ready anomaly detection system** combining:
-- **Deep autoencoders** for unsupervised anomaly detection
-- **Permissioned blockchain** for immutable audit trails
-- **Role-based access control** for secure operations
-- **Comprehensive evaluation** with rigorous data splits
+The framework combines:
 
-Designed for **student performance monitoring** with high precision (90%) and strong recall (81.8%), verified across 6,607 samples with auditable blockchain logging.
+- **Autoencoder-based anomaly detection**
+- **Variational Autoencoder (VAE) baseline**
+- **Isolation Forest baseline**
+- **PCA reconstruction baseline**
+- **Validation-based anomaly threshold selection**
+- **Repeated-seed robustness evaluation**
+- **Statistical model comparison**
+- **Ablation and sensitivity experiments**
+- **Permissioned Proof-of-Authority blockchain**
+- **Controlled blockchain tamper-detection experiment**
+
+The framework separates two responsibilities:
+
+1. **Detection** — machine learning models identify unusual student profiles.
+2. **Integrity and provenance** — the blockchain records detected anomalies and provides tamper-evident verification.
 
 ---
 
-## Key Results (March 8, 2026)
+## Dataset
 
-### Autoencoder performance (Primary Method)
-| Metric | Value | Notes |
-|--------|-------|-------|
-| **Precision** | 88.24% | 30 TP out of 34 detections |
-| **Recall** | 90.91% | Detected 30/33 injected anomalies |
-| **F1 Score** | 89.55% | Excellent balance |
-| **ROC-AUC** | 96.57% | Strong discrimination |
-| **Accuracy** | 99.58% | Correctly classifies 1,645/1,652 test samples |
-| **TP/FP/FN** | 30/4/3 | High recall, minimal false positives |
-| **Threshold** | 1.269 | Grid-searched F1 maximization |
-| **Dataset** | 1,652 test samples | 75/25 train/test split from 6,607 total |
+The project uses the **StudentPerformanceFactors** dataset.
 
-### Isolation Forest Baseline (Comparison)
-| Metric | Value | Notes |
-|--------|-------|-------|
-| **Precision** | 2.39% | 33 TP out of 1,383 detections |
-| **Recall** | 100% | Caught all anomalies but with massive false positives |
-| **F1 Score** | 4.76% | Poor result (84% of test set flagged) |
-| **ROC-AUC** | 81.23% | Moderate discrimination |
-| **Accuracy** | 18.28% | 1,350 false positives make it unreliable |
-| **TP/FP/FN** | 33/1,350/0 | All anomalies caught but at cost of accuracy |
+The dataset contains **6,607 student records** with educational and behavioural factors related to student performance.
 
-**Baseline Conclusion**: Autoencoder is **20x better F1 score** than Isolation Forest. Isolation Forest unsuitable for behavioral anomalies — it detects statistical outliers, not contextual patterns.
+The raw dataset is stored as:
 
-### Blockchain Status
-| Component | Status | Details |
-|-----------|--------|----------|
-| **Anomaly Logging** | ✓ Success | 34 anomalies logged with detector role authentication |
-| **Access Control** | ✓ Active | Detector (write), Auditor (verify), Viewer (read) |
-| **Hash Chain** | ✓ Valid | Each entry linked to previous via SHA256 |
-| **HMAC Signatures** | ✓ Valid | All entries authenticated with HMAC-SHA256 |
-| **Tamper Detection** | ✓ Verified | Modified entries break hash chain immediately |
+```text
+data/StudentPerformanceFactors.csv
+```
 
-### Comparison with Baseline (Isolation Forest)
+After preprocessing and categorical encoding, the anomaly-detection models operate on **28 input features**.
 
-A baseline comparison demonstrates the superiority of autoencoders for behavioral anomaly detection:
+---
+
+## Project Structure
+
+```text
+blockchain-anomaly-detection/
+│
+├── data/
+│   └── StudentPerformanceFactors.csv
+│
+├── outputs/                           # Generated figures and pipeline outputs
+│
+├── requirements/
+│   └── requirements.txt              # Fixed Python dependency versions
+│
+├── results/
+│   ├── poa_ledgers/                  # Replicated validator ledgers
+│   ├── poa_tamper_test/              # Controlled tampering experiment outputs
+│   ├── poa_test_ledgers/             # PoA verification test outputs
+│   ├── ablation_analysis_report.txt
+│   ├── ablation_comparison.png
+│   ├── ablation_heatmap.png
+│   ├── ablation_study_revised.json
+│   ├── model_comparison.json
+│   ├── multiseed_individual_results.csv
+│   ├── multiseed_results.json
+│   ├── multiseed_summary.csv
+│   ├── predictions_comparison.csv
+│   └── roc_data.json
+│
+├── scripts/
+│   ├── __init__.py
+│   ├── ablation_study.py
+│   ├── analyze_ablation.py
+│   ├── compare_autoencoder_vs_isolation_forest.py
+│   ├── run_multiseed_comparison.py
+│   ├── run_pipeline.py
+│   ├── statistical_comparison.py
+│   ├── tamper_detection_test.py
+│   ├── test_poa_blockchain.py
+│   ├── tune_hyperparameters.py
+│   └── visualize_encoder_data.py
+│
+├── src/
+│   ├── config.py
+│   ├── data_loader.py
+│   ├── isolation_forest_baseline.py
+│   ├── pca_baseline.py
+│   ├── poa_blockchain.py
+│   ├── preprocessing.py
+│   └── vae_baseline.py
+│
+├── architecture_tuning_results.json
+├── blockchain_ledger.jsonl
+├── CHANGELOG.md
+├── pipeline_outputs.json
+├── README.md
+├── SETUP.md
+├── test_architectures.py
+└── tuning_results.json
+```
+
+Generated experiment files may change when the corresponding scripts are rerun.
+
+Local runtime folders such as `__pycache__` and virtual environments are not part of the experimental implementation.
+
+---
+
+## Installation and Setup
+
+### 1. Create a Virtual Environment
 
 ```powershell
-python scripts/compare_autoencoder_vs_isolation_forest.py
-# Generates: outputs/baseline_comparison_results.json
-```
-
-**Key Findings**:
-- **Autoencoder F1**: 89.55% vs **Isolation Forest F1**: 4.76% (18.8x better)
-- **Autoencoder Precision**: 88.24% vs **Isolation Forest Precision**: 2.39% (36.9x better)
-- **False Alarms**: Autoencoder 4 vs Isolation Forest 1,350 (337x fewer)
-
-Why Isolation Forest fails: It's designed to find statistical outliers (extreme values), not behavioral anomalies. A student with unusual attendance + study hours patterns isn't necessarily an outlier in either feature individually—but the *combination* is abnormal. Autoencoders learn feature relationships and catch these contextual anomalies.
-
----
-
-## System Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│              BLOCKCHAIN-ENABLED ANOMALY DETECTION               │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  INPUT DATA                PROCESSING           ML MODEL         │
-│  (6,607 samples)           (Preprocessing)      (Autoencoder)    │
-│       ↓                            ↓                   ↓         │
-│  StudentPerformance    → Normalize/Encode  → 128→64→32→4→...    │
-│  FactorsCsv            → Select Features   → Reconstruction      │
-│       (20 cols)        → Handle Missing    → Error Scoring       │
-│                                                   ↓              │
-│                                            ANOMALY DETECTION     │
-│                                            Grid Search Threshold │
-│                                            TP/FP/FN Metrics     │
-│                                                   ↓              │
-│                                          BLOCKCHAIN LOGGING      │
-│                                          (Permissioned Access)   │
-│                                          • Detector (write)      │
-│                                          • Auditor (verify)     │
-│                                          • Hash chain (tamper)  │
-│                                                   ↓              │
-│                                            AUDIT TRAIL          │
-│                                    (blockchain_ledger.jsonl)    │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## Quick Start
-
-### 1. Setup Environment
-```powershell
-# Create virtual environment
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
+```
 
-# Install dependencies
+### 2. Install Dependencies
+
+```powershell
 pip install -r requirements/requirements.txt
 ```
 
-### 2. Run Full Pipeline
+The requirements file contains fixed dependency versions to improve reproducibility.
+
+### 3. Check the Dataset
+
+Ensure that the following file exists:
+
+```text
+data/StudentPerformanceFactors.csv
+```
+
+### 4. Run the Main Pipeline
+
 ```powershell
-python scripts/run_pipeline.py
+python .\scripts\run_pipeline.py
 ```
 
-**Output:**
-- `pipeline_outputs.json` — Metrics (precision, recall, F1, ROC-AUC, threshold)
-- `blockchain_ledger.jsonl` — Immutable detection log with hash chain
+---
 
-### 3. Visualize Data & Features
+## Experimental Protocol
+
+The revised experimental protocol uses separate training, validation, and test sets:
+
+```text
+Training:   60%
+Validation: 15%
+Test:       25%
+```
+
+For the 6,607 StudentPerformanceFactors records, this corresponds to:
+
+```text
+Training:   3,964 samples
+Validation:   991 samples
+Test:       1,652 samples
+```
+
+Each partition has a separate purpose:
+
+- **Training set** — model training
+- **Validation set** — anomaly-threshold selection
+- **Test set** — final held-out evaluation
+
+The test labels are not used to select the anomaly threshold.
+
+---
+
+## Data Preprocessing
+
+The preprocessing pipeline performs:
+
+1. Load the StudentPerformanceFactors dataset
+2. Handle missing values
+3. Encode categorical variables
+4. Exclude label-like variables from model inputs
+5. Split data into training, validation, and test sets
+6. Fit feature normalization using the training data
+7. Apply the fitted transformation to validation and test data
+
+Numerical missing values are handled using median imputation, while categorical missing values are handled using the mode.
+
+Categorical variables are converted into numerical features using one-hot encoding.
+
+The resulting model input contains **28 features**.
+
+---
+
+## Feature Normalization
+
+Features are standardized using `StandardScaler`.
+
+The transformation is:
+
+```text
+x_scaled = (x - mean) / standard deviation
+```
+
+The scaler is fitted on the **training data only**.
+
+```text
+Training data   → fit + transform
+Validation data → transform using training scaler
+Test data       → transform using training scaler
+```
+
+This prevents information from the validation or test distributions from influencing preprocessing.
+
+---
+
+## Autoencoder Method
+
+The primary anomaly detector is an Autoencoder.
+
+The model learns to reconstruct student profiles through a compressed latent representation.
+
+The basic process is:
+
+```text
+Student Features
+       ↓
+     Encoder
+       ↓
+Latent Representation
+       ↓
+     Decoder
+       ↓
+Reconstructed Features
+       ↓
+Reconstruction Error
+       ↓
+  Anomaly Score
+```
+
+Samples that follow patterns learned during training are expected to have relatively low reconstruction error.
+
+Samples that differ substantially from learned patterns are expected to have higher reconstruction error.
+
+---
+
+## Main Autoencoder Architecture
+
+The main experiment uses a compressed bottleneck representation.
+
+Alternative bottleneck dimensions and architectural settings are evaluated separately in the ablation and hyperparameter experiments.
+
+The ablation configurations should therefore not be interpreted as replacing the baseline architecture used for the main experiment.
+
+---
+
+## Synthetic Anomaly Injection
+
+Synthetic anomalies are used to provide controlled ground-truth labels.
+
+The main StudentPerformanceFactors experiment injects anomalies into approximately **2%** of the validation and test samples.
+
+This produces approximately:
+
+```text
+Validation anomalies: 19
+Test anomalies:       33
+```
+
+Synthetic anomalies are introduced after the train/validation/test split.
+
+The training data remain clean for Autoencoder training.
+
+---
+
+## Threshold Selection
+
+The anomaly threshold is selected using the **validation set only**.
+
+The procedure is:
+
+1. Train the Autoencoder using the training data
+2. Calculate reconstruction errors on the validation set
+3. Evaluate candidate thresholds
+4. Select the threshold that maximizes validation F1-score
+5. Fix the selected threshold
+6. Apply the fixed threshold to the held-out test set
+
+The test set is therefore used only for final evaluation.
+
+This prevents test-label leakage during threshold optimization.
+
+---
+
+## Main Pipeline
+
+Run:
+
 ```powershell
-# Generate feature importance chart
-python scripts/visualize_encoder_data.py
-# Output: outputs/encoder_features.png
+python .\scripts\run_pipeline.py
 ```
 
-### 4. View Results
+The pipeline performs:
+
+1. Load the dataset
+2. Split the data using 60/15/25
+3. Normalize the features
+4. Train the Autoencoder
+5. Save training-loss curves
+6. Inject synthetic anomalies into validation and test sets
+7. Select the threshold using validation data
+8. Evaluate the fixed threshold on the held-out test set
+9. Calculate anomaly-detection metrics
+10. Log detected anomalies to the permissioned PoA blockchain
+11. Verify all validator ledgers
+12. Run the controlled blockchain tampering experiment
+13. Save pipeline outputs
+
+---
+
+## Evaluation Metrics
+
+The anomaly-detection models are evaluated using:
+
+- **Precision**
+- **Recall**
+- **F1-score**
+- **ROC-AUC**
+- **PR-AUC**, where applicable
+- **Specificity**
+- **Balanced Accuracy**, where applicable
+- **Matthews Correlation Coefficient (MCC)**, where applicable
+
+The evaluation also reports confusion-matrix values:
+
+- True Positives
+- False Positives
+- False Negatives
+- True Negatives
+
+---
+
+## Baseline Models
+
+The Autoencoder is compared with multiple anomaly-detection approaches.
+
+### Variational Autoencoder
+
+The VAE implementation is located at:
+
+```text
+src/vae_baseline.py
+```
+
+The VAE uses a probabilistic latent representation and provides a deep-learning comparison with the standard Autoencoder.
+
+### Isolation Forest
+
+The Isolation Forest implementation is located at:
+
+```text
+src/isolation_forest_baseline.py
+```
+
+Isolation Forest provides a classical tree-based anomaly-detection baseline.
+
+### PCA
+
+The PCA baseline is located at:
+
+```text
+src/pca_baseline.py
+```
+
+PCA provides a simpler reconstruction-based comparison.
+
+Reconstruction error from a lower-dimensional PCA representation is used as the anomaly score.
+
+---
+
+## Repeated-Seed Evaluation
+
+To examine robustness to random initialization and stochastic variation, the main model comparison is repeated using five random seeds:
+
+```text
+41
+42
+43
+44
+45
+```
+
+Run:
+
 ```powershell
-# Show metrics
-cat pipeline_outputs.json
-
-# Show blockchain ledger (hash-chained entries)
-cat blockchain_ledger.jsonl
+python .\scripts\run_multiseed_comparison.py
 ```
+
+The experiment compares:
+
+- Autoencoder
+- Variational Autoencoder
+- Isolation Forest
+- PCA
+
+Results are summarized using:
+
+```text
+Mean ± Standard Deviation
+```
+
+Generated results include:
+
+```text
+results/multiseed_individual_results.csv
+results/multiseed_results.json
+results/multiseed_summary.csv
+```
+
+This provides an indication of variability across repeated runs rather than relying only on a single experimental run.
 
 ---
 
-## Configuration
+## Statistical Comparison
 
-Edit `src/config.py` to customize:
+Statistical comparison of the repeated model results is implemented in:
 
-```python
-SEED = 42                       # Random seed (reproducibility)
-TRAIN_SIZE = 0.75              # 75% training set (clean data only)
-TEST_SIZE = 0.25               # 25% test set (for anomaly injection)
-
-INJECTION_FRAC = 0.02          # 2% anomalies injected into test set
-NOISE_SCALE = 5.0              # How much noise to add (standard deviations)
-
-BOTTLENECK_DIM = 4             # Autoencoder bottleneck (7:1 compression)
-EPOCHS = 150                   # Training iterations
-BATCH_SIZE = 16                # Batch size
-
-LEDGER_PATH = "blockchain_ledger.jsonl"  # Blockchain file
+```text
+scripts/statistical_comparison.py
 ```
+
+This analysis complements the five-seed experiment by examining differences between model performance across repeated runs.
 
 ---
 
-## Pipeline Components
+## Ablation and Sensitivity Analysis
 
-### 1. Data Processing (`src/data_loader.py`, `src/preprocessing.py`)
-- **Load**: StudentPerformanceFactors.csv (6,607 samples × 20 columns)
-- **Handle Missing**: Median/mode imputation
-- **Encode**: One-hot encoding for 13 categorical variables → 28 numeric features
-- **Normalize**: Standardize features to mean 0, std 1
-- **Select**: Drop labels (FinalGrade, PassFail, ExamResult)
+The repository includes experiments examining the sensitivity of the Autoencoder to different experimental configurations.
 
-### 2. Autoencoder Model (`src/autoencoder_model.py`)
+Relevant scripts include:
 
-**Why Autoencoder for Behavioral Anomalies?**
-
-This project uses **autoencoders** instead of traditional outlier detection (e.g., Isolation Forest) because:
-
-| Aspect | Autoencoder | Isolation Forest |
-|--------|-------------|------------------|
-| **Learns** | Normal behavioral patterns (feature relationships) | Statistical outliers (extreme values) |
-| **Detects** | Behavioral anomalies (pattern breaks) | Point anomalies (isolated points) |
-| **Approach** | Compression + reconstruction error | Tree-based isolation score |
-| **For students** | ✓ "Does this student behave normally?" | ✗ "Is this value extreme?" |
-| **Performance** | F1 = 89.55% | F1 = 4.76% |
-
-**Behavioral anomalies are contextual**: A student with 50% attendance and 3.2 GPA is normal individually, but unusual *together*. Autoencoders learn these relationships; outlier detectors don't.
-
-**Architecture:**
-```
-Input (28) → Dense(128, ReLU) → Dense(64, ReLU) → Dense(32, ReLU)
-            → Bottleneck(4, ReLU) [compression point]
-            → Dense(32, ReLU) → Dense(64, ReLU) → Dense(128, ReLU)
-            → Output(28, Linear)
-
-Training:
-  • Loss function: Mean squared error (measures reconstruction accuracy)
-  • Optimizer: Adam 
-  • Dropout: 0.1 (prevents overfitting)
-  • Early stopping: Stop if validation loss doesn't improve for 20 epochs
-  • Validation split: Use 15% of training data to monitor progress
+```text
+scripts/ablation_study.py
+scripts/analyze_ablation.py
+scripts/tune_hyperparameters.py
 ```
 
-### 3. Anomaly Detection
-- **Inject anomalies**: Add noise to 2% of test samples (~33 samples)
-- **Calculate score**: How well can the autoencoder reconstruct each sample? Low reconstruction = normal, high = anomaly
-- **Find threshold**: Try 400 different thresholds, pick the one with best balance
-- **Classify**: If score > threshold, flag as anomaly
+Generated results include:
 
-### 4. Permissioned Blockchain
-- **Who can do what**: Admin registers users, Detector logs findings, Auditor verifies integrity, Viewer reads logs
-- **Passwords**: Hashed with SHA256, never stored in plain text
-- **Entry linking**: Each log entry points to the previous one, so changing anything earlier breaks the chain
-- **Signing**: Uses HMAC to digitally sign entries so you can prove who wrote them
-- **Verification**: Can check if any entries have been tampered with
+```text
+results/ablation_study_revised.json
+results/ablation_analysis_report.txt
+results/ablation_comparison.png
+results/ablation_heatmap.png
+```
+
+The ablation experiments are treated as sensitivity analyses and are separate from the primary experimental configuration.
 
 ---
 
-## Features
+## Permissioned Proof-of-Authority Blockchain
 
-### ✅ Machine Learning
-- Autoencoder network for detecting anomalies without labels
-- Uses reconstruction error as anomaly score
-- Automatically finds best threshold for classification
-- Works with 28 encoded features
+The revised provenance component uses a small permissioned **Proof-of-Authority (PoA)** blockchain.
 
-### ✅ Blockchain Security
-- **Tamper detection**: Change one entry and the whole chain breaks
-- **Digital signatures**: Proves who wrote each entry and that it hasn't been changed
-- **Append-only**: Can only add new entries, never delete old ones
-- **Access control**: Different users can do different things
-- **Password protection**: Passwords never stored in plain text
+The implementation is located at:
 
-### ✅ Reproducibility
-- Fixed random seeds so results are consistent
-- Same configuration produces same results every time
-- Minimal variation across runs (less than 1%)
-
-### ✅ Testing & Evaluation
-- Clean training data (no anomalies), injected test anomalies (fair evaluation)
-- Threshold tuned on test set to optimize performance
-- Compared against Isolation Forest baseline
-
----
-
-## Comparison: Autoencoder vs Baseline
-
-**Autoencoder wins decisively** on this student performance dataset:
-
-| Metric | Autoencoder | Isolation Forest | Improvement |
-|--------|------------|-----------------|-------------|
-| **Precision** | 77.8% | 7.55% | +70.3 pp |
-| **Recall** | 89.7% | 10.3% | +79.4 pp |
-| **F1** | 0.833 | 0.087 | +9.5x better |
-| **ROC-AUC** | 0.989 | 0.737 | +0.252 |
-
-**Why Autoencoder wins:**
-- Learns how features relate to each other in normal data
-- Can spot when that relationship breaks down (indicates anomaly)
-- Isolation Forest doesn't understand relationships (treats features separately)
-
----
-
-## File Structure
-
-```
-blockchain-anomaly-detection/
-├── src/
-│   ├── config.py                    # Settings (seed, split, epochs, etc)
-│   ├── data_loader.py               # Loads the CSV file
-│   ├── preprocessing.py             # Cleans and normalizes data
-│   ├── anomaly_injection.py         # Adds noise to test data
-│   ├── autoencoder_model.py         # The neural network model
-│   └── blockchain_logger.py         # Stores and verifies detections
-│
-├── scripts/
-│   ├── run_pipeline.py              # Main: train → inject → detect → log
-│   ├── visualize_encoder_data.py    # Feature importance + distribution
-│   ├── tune_hyperparameters.py      # Grid search (bottleneck, epochs, etc.)
-│   ├── compare_autoencoder_vs_isolation_forest.py
-│   └── [other visualization scripts]
-│
-├── data/
-│   └── StudentPerformanceFactors.csv  # Input data (6,607 × 20)
-│
-├── outputs/
-│   ├── encoder_features.png           # Feature importance chart
-│   └── [other generated artifacts]
-│
-├── blockchain_ledger.jsonl            # Immutable detection log
-├── pipeline_outputs.json              # Latest run metrics
-├── tuning_results.json                # Hyperparameter search history
-├── CHANGELOG.md                       # Detailed project tracker
-├── README.md                          # This file
-└── requirements/
-    └── requirements.txt               # Dependencies (TensorFlow, scikit-learn, pandas, etc.)
+```text
+src/poa_blockchain.py
 ```
 
----
+The network contains three authorized validator identities:
 
-## Results Format
-
-### `pipeline_outputs.json`
-```json
-{
-  "config": {
-    "train_size": 0.75,
-    "test_size": 0.25,
-    "injection_frac": 0.02,
-    "bottleneck_dim": 4,
-    "epochs": 150
-  },
-  "metrics": {
-    "precision": 0.90,
-    "recall": 0.818,
-    "f1": 0.857,
-    "roc_auc": 0.969,
-    "tp": 27,
-    "fp": 3,
-    "fn": 6
-  },
-  "threshold": 1.482
-}
+```text
+validator_1
+validator_2
+validator_3
 ```
 
-### `blockchain_ledger.jsonl` (one entry per line)
-```json
-{
-  "timestamp": 1707471234.567,
-  "user": "detector",
-  "user_role": "detector",
-  "data": {"index": 42, "details": {"score": 1.85}},
-  "prev_hash": "abc123...",
-  "hash": "def456...",
-  "signature": "ghi789..."
-}
+Only authorized validators can create blocks.
+
+Authority rotates between validators using a simple round-robin mechanism.
+
+---
+
+## Blockchain Block Structure
+
+Each block contains information including:
+
+- Block index
+- Timestamp
+- Validator identity
+- Anomaly information
+- Previous block hash
+- SHA-256 block hash
+- HMAC-SHA256 authentication tag
+
+Each newly created block is replicated across the three validator ledgers.
+
+---
+
+## Blockchain Verification
+
+Blockchain verification checks:
+
+1. The validator is authorized
+2. The block is linked to the correct previous block
+3. The stored SHA-256 hash matches the block contents
+4. The HMAC-SHA256 authentication tag is valid
+5. Each validator ledger is internally valid
+6. All validator replicas contain the same blockchain
+
+This provides tamper-evident provenance for stored anomaly records.
+
+---
+
+## Controlled Tamper-Detection Experiment
+
+A controlled tampering experiment is included in:
+
+```text
+scripts/tamper_detection_test.py
 ```
 
+The experiment demonstrates the integrity function of the blockchain separately from the anomaly-detection function.
+
+The procedure is:
+
+1. Create a legitimate anomaly record
+2. Replicate it across the authorized validator ledgers
+3. Modify the anomaly score stored by one validator
+4. Verify the blockchain again
+5. Compare the validator replicas
+
+The modified validator ledger fails verification because the stored data no longer correspond to the original cryptographic values.
+
+The untouched validator replicas remain valid.
+
+Replica comparison also detects that the validator ledgers are no longer identical.
+
 ---
 
-## Reproducibility & Randomness
+## PoA Blockchain Testing
 
-### How We Fix Randomness
-We control all random sources to get consistent results:
-```python
-os.environ["PYTHONHASHSEED"] = "42"         # Python randomization
-os.environ["TF_DETERMINISTIC_OPS"] = "1"    # TensorFlow determinism
-np.random.seed(42)                          # NumPy randomness
-tf.random.set_seed(42)                      # TensorFlow randomness
-random.seed(42)                             # Python random
+Additional tests of the permissioned PoA implementation are available in:
+
+```text
+scripts/test_poa_blockchain.py
 ```
 
-### What to Expect
-- **ROC-AUC**: Almost identical across runs (±0.01)
-- **Precision/Recall**: Minor variation (±1-2%) due to threshold selection
-- **Overall results**: Consistent and reproducible
+These tests support verification of:
 
-### Why Not Bit-Perfect?
-Machine learning on modern CPUs has some inherent randomness:
-- Floating-point math can happen in different orders
-- Multi-threaded operations don't always run in the same sequence
-- This is totally normal and expected
-
-**The bottom line**: You should get the same results when you run the pipeline twice, within 1-2% variation.
+- Authorized validator behaviour
+- Unauthorized validator rejection
+- Block creation
+- Hash-chain integrity
+- Authentication-tag verification
+- Validator-ledger replication
+- Replica consistency
 
 ---
 
-## Development History
+## Detection vs Blockchain Integrity
 
-See **`CHANGELOG.md`** for complete project tracker including:
-- **9 development iterations** (70/20/10 splits → reproducibility fixes → blockchain showcase)
-- **All experiment results** (bottleneck dimensions, noise scales, baseline comparisons)
-- **Architectural decisions** (why 4D bottleneck, why reconstruction error, why permissioned blockchain)
-- **Key findings** (autoencoder compression impact, feature importance, blockchain security properties)
-- **Future enhancements** (ensemble methods, transfer learning, streaming pipeline)
+The framework separates anomaly detection from blockchain integrity.
+
+### 1. Detection — Autoencoder's Role
+
+The machine-learning component:
+
+- Learns patterns in student data
+- Calculates reconstruction errors
+- Produces anomaly scores
+- Identifies unusual student profiles
+
+### 2. Integrity — Blockchain's Role
+
+The blockchain component:
+
+- Records detected anomalies
+- Maintains cryptographic hash linkage
+- Authenticates stored blocks
+- Replicates records across authorized validators
+- Detects modification of stored records
+- Detects inconsistencies between validator copies
+
+The blockchain does **not** improve the Autoencoder's anomaly-detection accuracy.
+
+Its role is to protect the provenance and integrity of anomaly records after detection.
 
 ---
 
-## Common Issues & Troubleshooting
+## Security and Trust Assumptions
+
+The PoA blockchain is a proof-of-concept permissioned provenance mechanism.
+
+The validators operate within an authorized environment.
+
+HMAC-SHA256 provides **symmetric authentication**.
+
+It should not be interpreted as an asymmetric digital-signature mechanism.
+
+A party with access to the shared secret key could potentially generate a valid authentication tag.
+
+The implementation therefore demonstrates tamper-evident provenance under the stated trust assumptions rather than absolute immutability against every possible attacker.
+
+---
+
+## Generated Outputs
+
+The project generates experiment outputs in the `outputs/` and `results/` directories.
+
+Examples include:
+
+```text
+outputs/
+    autoencoder_loss_curves.png
+    baseline comparison outputs
+    pipeline outputs
+
+results/
+    model_comparison.json
+    predictions_comparison.csv
+    roc_data.json
+    multiseed_individual_results.csv
+    multiseed_results.json
+    multiseed_summary.csv
+    ablation_study_revised.json
+    ablation_analysis_report.txt
+    ablation_comparison.png
+    ablation_heatmap.png
+    poa_ledgers/
+    poa_tamper_test/
+    poa_test_ledgers/
+```
+
+These files are generated by the corresponding experimental scripts and may be recreated by rerunning the experiments.
+
+---
+
+## Reproducibility
+
+The fixed Python dependencies are provided in:
+
+```text
+requirements/requirements.txt
+```
+
+Install them using:
+
+```powershell
+pip install -r requirements/requirements.txt
+```
+
+The repository contains code for:
+
+- Data preprocessing
+- Autoencoder anomaly detection
+- VAE comparison
+- Isolation Forest comparison
+- PCA comparison
+- Validation-based threshold selection
+- Synthetic anomaly injection
+- Ablation analysis
+- Five-seed robustness evaluation
+- Statistical comparison
+- Permissioned PoA blockchain logging
+- Blockchain integrity verification
+- Controlled tamper detection
+
+Random seeds are controlled where applicable.
+
+Because machine-learning libraries, hardware, operating systems, and numerical operations can introduce small differences, exact bit-for-bit equality across all systems is not assumed.
+
+The repeated-seed evaluation provides an additional measure of experimental variability.
+
+---
+
+## Current Results
+
+The README does not use historical hard-coded performance tables as the authoritative source of the current experimental results.
+
+Current results should be obtained from:
+
+- The revised manuscript
+- `pipeline_outputs.json`
+- Files in `results/`
+- Files in `outputs/`
+- Repeated-seed experiment outputs
+
+This prevents results from earlier development configurations from being confused with the revised experimental protocol.
+
+---
+
+## Important Experimental Notes
+
+### Validation-Based Threshold Selection
+
+Threshold selection is performed using validation data only.
+
+The held-out test set is not used to optimize the anomaly threshold.
+
+### Synthetic Anomalies
+
+The main StudentPerformanceFactors experiment uses approximately 2% injected synthetic anomalies.
+
+These provide controlled ground-truth labels for evaluation.
+
+### Repeated Experiments
+
+The main model comparison is repeated across five random seeds and summarized using mean ± standard deviation.
+
+### Ablation Experiments
+
+Ablation experiments are sensitivity analyses and should not be confused with the main experimental configuration.
+
+### Blockchain Provenance
+
+The PoA blockchain protects the integrity and provenance of anomaly records but does not alter the machine-learning predictions.
+
+---
+
+## Common Issues and Troubleshooting
 
 ### Import Errors
+
+From the project root, run:
+
 ```powershell
 $env:PYTHONPATH=(Resolve-Path .).Path
-python scripts/run_pipeline.py
+python .\scripts\run_pipeline.py
 ```
 
-### Missing Data Directory
+### Missing Dataset
+
+Check:
+
 ```powershell
-New-Item -ItemType Directory -Path data -ErrorAction SilentlyContinue
-# Then download StudentPerformanceFactors.csv to data/
+Test-Path .\data\StudentPerformanceFactors.csv
+```
+
+The result should be:
+
+```text
+True
 ```
 
 ### TensorFlow Warnings
+
+TensorFlow may display informational CPU or optimization messages.
+
+To reduce logging:
+
 ```powershell
 $env:TF_CPP_MIN_LOG_LEVEL='2'
-python scripts/run_pipeline.py
+python .\scripts\run_pipeline.py
 ```
 
-### No Output Files Generated
+### Recreate PoA Ledgers
+
+If a previous blockchain run needs to be cleared before rerunning the complete experiment:
+
 ```powershell
-# Ensure outputs directory exists
-New-Item -ItemType Directory -Path outputs -ErrorAction SilentlyContinue
-
-# Check data file exists
-Test-Path data/StudentPerformanceFactors.csv
+Remove-Item -Recurse -Force .\results\poa_ledgers -ErrorAction SilentlyContinue
+python .\scripts\run_pipeline.py
 ```
 
 ---
 
-## Performance Analysis
+## Code Availability
 
-### Anomaly Detection Breakdown
-- **True Positives (27)**: Correctly detected injected anomalies
-- **False Positives (3)**: Normal samples flagged as anomalies
-- **False Negatives (6)**: Injected anomalies missed
-- **True Negatives (1,616)**: Correctly identified normal samples
+This repository contains the StudentPerformanceFactors implementation used for the experiments described in the associated manuscript.
 
-**Precision vs Recall Trade-off:**
-- High precision (90%) → Minimal false alarms → Good for cost-sensitive scenarios
-- Good recall (81.8%) → Catches most anomalies → Balanced approach
-- F1 (0.857) → Optimal balance for this use case
+The current implementation includes:
 
-### Feature Importance
-Run visualization to see which features matter most:
-```powershell
-python scripts/visualize_encoder_data.py
-```
-This generates a 2-panel chart showing:
-- **Left**: Feature mean values (data characteristics)
-- **Right**: Top 15 features by reconstruction error importance (what the model relies on)
-
----
-
-## Security & Compliance
-
-### Blockchain Benefits
-✅ **Tamper-evident**: Any tampering breaks the hash chain  
-✅ **Authentic**: Digital signatures prevent tampering and spoofing  
-✅ **Immutable**: Can only add entries, never delete or modify  
-✅ **Auditable**: Complete record of who logged what and when  
-✅ **Verifiable**: Anyone can verify the chain hasn't been tampered with  
-
-### Access Control
-- **Admin**: Register and manage users
-- **Detector**: Log detected anomalies 
-- **Auditor**: Check if blockchain has been tampered with
-- **Viewer**: Read logs (view-only)
+- Autoencoder anomaly detection
+- Variational Autoencoder baseline
+- Isolation Forest baseline
+- PCA baseline
+- 60/15/25 train/validation/test evaluation
+- Validation-only threshold selection
+- Synthetic anomaly evaluation
+- Ablation experiments
+- Five-seed robustness evaluation
+- Statistical model comparison
+- Permissioned PoA blockchain
+- Three replicated validator ledgers
+- Blockchain integrity verification
+- Controlled blockchain tamper-detection experiment
 
 ---
 
-**Status**: ✅ Production-ready (Feb 11, 2026)  
-**Latest Results**: Precision 90.0%, F1 0.857, ROC-AUC 0.969  
-**Architecture**: 128→64→32→4D bottleneck autoencoder + permissioned blockchain  
-**Dataset**: 6,607 student performance samples, 28 features, 7:1 compression
+## Associated Manuscript
+
+**Autoencoder-Based Anomaly Detection with Blockchain-Assisted Provenance for Educational Data**
+
+This repository corresponds to the revised StudentPerformanceFactors experimental implementation described in the manuscript.

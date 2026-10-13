@@ -1,0 +1,1 @@
+{"index": 0, "timestamp": 1790331866.419914, "validator": "validator_1", "data": {"sample_index": 42, "anomaly_score": 3.5, "detected_by": "autoencoder", "confidence": 0.95}, "previous_hash": null, "hash": "f5e661e0891231880a99989684d7493d7c72fafd6c5499fae047ccad8196454d", "signature": "44ddaeef424c93e7a4a298733cc22b3980370d714d9f28bdb7c88a4e35f27e91"}

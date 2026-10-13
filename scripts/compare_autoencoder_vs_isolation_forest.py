@@ -184,7 +184,10 @@ def format_metrics_table(metrics_ae, metrics_vae, metrics_if):
         if_str = f"{if_val:.4f}"
         
         # Find the best value
-        best_val = max(ae_val, vae_val, if_val)
+        if metric_key == "fpr":
+            best_val = min(ae_val, vae_val, if_val)
+        else:
+            best_val = max(ae_val, vae_val, if_val)
         if abs(ae_val - best_val) < 1e-6:
             ae_str += " ✓"
         if abs(vae_val - best_val) < 1e-6:
@@ -267,57 +270,90 @@ def main(data_dir: str = "data", results_dir: str = "results"):
     df = prep.handle_missing(df)
     df_encoded, _ = prep.encode_categorical(df)
     X_df, feature_names = prep.select_features(df_encoded)
-    scaler, X = prep.normalize_features(X_df)
     
-    print(f"✓ Loaded: {X.shape[0]} samples, {X.shape[1]} features")
+    print(f"✓ Loaded: {X_df.shape[0]} samples, {X_df.shape[1]} features")
     
-    # STEP 2: Split train/test
+    # STEP 2: Split train/validation/test
     print("\n" + "=" * 80)
-    print("STEP 2: SPLITTING DATA (75% train, 25% test)")
+    print("STEP 2: SPLITTING DATA (60% train, 15% validation, 25% test)")
     print("=" * 80)
-    
-    X_train_raw, X_test_raw = train_test_split(
-        X, test_size=config.TEST_SIZE, random_state=config.SEED
-    )
-    scaler_train, X_train_scaled = prep.normalize_features(pd.DataFrame(X_train_raw))
-    X_test_scaled = scaler_train.transform(pd.DataFrame(X_test_raw))
-    
-    print(f"✓ Training set: {X_train_scaled.shape}")
-    print(f"✓ Test set: {X_test_scaled.shape}")
-    print(f"✓ Features: {len(feature_names)}")
 
-    # STEP 3: Inject synthetic anomalies
+    # Reserve the final 25% test set first.
+    X_train_val, X_test = train_test_split(
+        X_df,
+        test_size=config.TEST_SIZE,
+        random_state=config.SEED,
+    )
+
+    # Split the remaining 75% into 60% train and 15% validation.
+    val_fraction = config.VAL_SIZE / (
+        config.TRAIN_SIZE + config.VAL_SIZE
+    )
+
+    X_train, X_val = train_test_split(
+        X_train_val,
+        test_size=val_fraction,
+        random_state=config.SEED,
+    )
+
+    # Fit preprocessing ONLY on training data.
+    scaler, X_train_scaled = prep.normalize_features(X_train)
+    X_val_scaled = scaler.transform(X_val)
+    X_test_scaled = scaler.transform(X_test)
+
+    print(f"✓ Training set:   {X_train_scaled.shape}")
+    print(f"✓ Validation set: {X_val_scaled.shape}")
+    print(f"✓ Test set:       {X_test_scaled.shape}")
+    print(f"✓ Features:       {len(feature_names)}")
+
+    # STEP 3: Inject synthetic anomalies independently into validation and test
     print("\n" + "=" * 80)
-    print(f"STEP 3: INJECTING SYNTHETIC ANOMALIES ({args.frac*100:.0f}% Gaussian Noise)")
+    print(f"STEP 3: INJECTING SYNTHETIC ANOMALIES ({args.frac*100:.0f}%)")
     print("=" * 80)
-    
+
+    # Validation anomalies — used for threshold selection
+    X_val_df = pd.DataFrame(X_val_scaled)
+
+    X_val_corrupted_df, val_anomaly_indices = inject_anomalies(
+        X_val_df.copy(),
+        method="noise",
+        frac=args.frac,
+        scale=args.scale,
+        random_state=config.SEED,
+    )
+
+    X_val_corrupted = X_val_corrupted_df.values
+
+    y_val = np.ones(len(X_val_corrupted))
+    y_val[val_anomaly_indices] = -1
+
+    # Test anomalies — used only for final evaluation
     X_test_df = pd.DataFrame(X_test_scaled)
-    X_test_df_corrupted, anomaly_indices = inject_anomalies(
+
+    X_test_corrupted_df, test_anomaly_indices = inject_anomalies(
         X_test_df.copy(),
         method="noise",
         frac=args.frac,
         scale=args.scale,
-        random_state=config.SEED
+        random_state=config.SEED + 1,
     )
-    X_test_corrupted = X_test_df_corrupted.values
-    
-    # Create ground truth labels (1=normal, -1=anomaly)
-    y_true = np.ones(len(X_test_corrupted))
-    y_true[anomaly_indices] = -1
-    
-    n_anomalies = np.sum(y_true == -1)
-    n_normal = np.sum(y_true == 1)
-    print(f"✓ Injected {n_anomalies} anomalies into {len(X_test_corrupted)} test samples")
-    print(f"  Normal samples: {n_normal}")
-    print(f"  Anomalous samples: {n_anomalies}")
+
+    X_test_corrupted = X_test_corrupted_df.values
+
+    y_test = np.ones(len(X_test_corrupted))
+    y_test[test_anomaly_indices] = -1
+
+    print(f"✓ Validation anomalies: {np.sum(y_val == -1)} / {len(y_val)}")
+    print(f"✓ Test anomalies:       {np.sum(y_test == -1)} / {len(y_test)}")
 
     # STEP 4: Train AUTOENCODER
     print("\n" + "=" * 80)
     print("STEP 4: TRAINING AUTOENCODER")
     print("=" * 80)
     
-    autoencoder, threshold_ae = train_detector(
+    autoencoder, _, history_ae = train_detector(
         X_train_scaled,
+        X_val=X_val_scaled,
         contamination=args.frac,
         bottleneck_dim=config.BOTTLENECK_DIM,
         epochs=config.EPOCHS,
@@ -325,8 +361,20 @@ def main(data_dir: str = "data", results_dir: str = "results"):
         random_state=config.SEED
     )
     
+    # Select the AE decision threshold using validation data only.
+    val_scores_ae = score_anomalies(autoencoder, X_val_corrupted)
+    ae_threshold_opt = optimize_threshold_f1(val_scores_ae, y_val)
+
     print("✓ Autoencoder training completed")
-    print(f"  Initial threshold: {threshold_ae:.5f}")
+    print(
+        f"  Validation-selected threshold: "
+        f"{ae_threshold_opt['threshold']:.5f}"
+    )
+    print(
+        f"  Validation F1: {ae_threshold_opt['f1']:.4f}, "
+        f"Precision: {ae_threshold_opt['precision']:.4f}, "
+        f"Recall: {ae_threshold_opt['recall']:.4f}"
+    )
 
     # STEP 5: Train VARIATIONAL AUTOENCODER
     print("\n" + "=" * 80)
@@ -335,6 +383,7 @@ def main(data_dir: str = "data", results_dir: str = "results"):
     
     vae, threshold_vae = train_vae(
         X_train_scaled,
+        X_val=X_val_scaled,
         contamination=args.frac,
         latent_dim=config.BOTTLENECK_DIM,
         epochs=config.EPOCHS,
@@ -342,8 +391,24 @@ def main(data_dir: str = "data", results_dir: str = "results"):
         random_state=config.SEED
     )
     
+    # Select the VAE decision threshold using validation data only.
+    val_scores_vae = score_anomalies_vae(vae, X_val_corrupted)
+
+    vae_threshold_opt = optimize_threshold_f1(
+        val_scores_vae,
+        y_val
+    )
+
     print("✓ Variational Autoencoder training completed")
-    print(f"  Initial threshold: {threshold_vae:.5f}")
+    print(
+        f"  Validation-selected threshold: "
+        f"{vae_threshold_opt['threshold']:.5f}"
+    )
+    print(
+        f"  Validation F1: {vae_threshold_opt['f1']:.4f}, "
+        f"Precision: {vae_threshold_opt['precision']:.4f}, "
+        f"Recall: {vae_threshold_opt['recall']:.4f}"
+    )
 
     # STEP 6: Train ISOLATION FOREST
     print("\n" + "=" * 80)
@@ -359,45 +424,110 @@ def main(data_dir: str = "data", results_dir: str = "results"):
     
     print("✓ Isolation Forest training completed")
 
+    # Select the Isolation Forest threshold using validation data only.
+    val_scores_if = score_anomalies_if(
+        iso_forest,
+        X_val_corrupted
+    )
+
+    if_threshold_opt = optimize_threshold_if(
+        iso_forest,
+        X_val_corrupted,
+        y_val
+    )
+
+    print(
+        f"  Validation-selected threshold: "
+        f"{if_threshold_opt['threshold']:.5f}"
+    )
+    print(
+        f"  Validation F1: {if_threshold_opt['f1']:.4f}, "
+        f"Precision: {if_threshold_opt['precision']:.4f}, "
+        f"Recall: {if_threshold_opt['recall']:.4f}"
+    )
+
     # STEP 7: Score and predict on test set
     print("\n" + "=" * 80)
     print("STEP 7: EVALUATING MODELS ON TEST SET")
     print("=" * 80)
     
-    # Autoencoder scores and F1-optimized threshold
+    # Autoencoder:
+    # Score the final test set and apply the threshold selected on validation.
     scores_ae = score_anomalies(autoencoder, X_test_corrupted)
-    ae_threshold_opt = optimize_threshold_f1(scores_ae, y_true)
-    preds_ae = np.where(scores_ae > ae_threshold_opt["threshold"], -1, 1)
+
+    preds_ae = np.where(
+        scores_ae > ae_threshold_opt["threshold"],
+        -1,
+        1,
+    )
     
-    # Variational Autoencoder scores and F1-optimized threshold
+    # Variational Autoencoder:
+    # Score the final test set and apply the threshold selected on validation.
     scores_vae = score_anomalies_vae(vae, X_test_corrupted)
-    vae_threshold_opt = optimize_threshold_f1(scores_vae, y_true)
-    preds_vae = np.where(scores_vae > vae_threshold_opt["threshold"], -1, 1)
+
+    preds_vae = np.where(
+        scores_vae > vae_threshold_opt["threshold"],
+        -1,
+        1,
+    )
     
-    # Isolation Forest scores (using decision_function for better discrimination) and F1-optimized threshold
-    iso_scores = score_anomalies_if(iso_forest, X_test_corrupted)
-    if_threshold_opt = optimize_threshold_if(iso_forest, X_test_corrupted, y_true)
-    preds_if = np.where(iso_scores > if_threshold_opt["threshold"], -1, 1)
+    # Isolation Forest:
+    # Score the final test set and apply the threshold selected on validation.
+    iso_scores = score_anomalies_if(
+        iso_forest,
+        X_test_corrupted
+    )
+
+    preds_if = np.where(
+        iso_scores > if_threshold_opt["threshold"],
+        -1,
+        1
+    )
     
     
-    print(f"✓ Autoencoder threshold (F1-optimized, 5-99.9%): {ae_threshold_opt['threshold']:.5f}")
-    print(f"  F1: {ae_threshold_opt['f1']:.4f}, Precision: {ae_threshold_opt['precision']:.4f}, Recall: {ae_threshold_opt['recall']:.4f}")
-    print(f"  Score range: [{scores_ae.min():.5f}, {scores_ae.max():.5f}]")
-    print(f"✓ Variational Autoencoder threshold (F1-optimized, 5-99.9%): {vae_threshold_opt['threshold']:.5f}")
-    print(f"  F1: {vae_threshold_opt['f1']:.4f}, Precision: {vae_threshold_opt['precision']:.4f}, Recall: {vae_threshold_opt['recall']:.4f}")
-    print(f"  Score range: [{scores_vae.min():.5f}, {scores_vae.max():.5f}]")
-    print(f"✓ Isolation Forest threshold (F1-optimized, 5-99.9%): {if_threshold_opt['threshold']:.5f}")
-    print(f"  F1: {if_threshold_opt['f1']:.4f}, Precision: {if_threshold_opt['precision']:.4f}, Recall: {if_threshold_opt['recall']:.4f}")
-    print(f"  Score range: [{iso_scores.min():.5f}, {iso_scores.max():.5f}]")
+    print(
+        f"✓ Autoencoder validation-selected threshold: "
+        f"{ae_threshold_opt['threshold']:.5f}"
+    )
+    print(
+        f"  Test score range: "
+        f"[{scores_ae.min():.5f}, {scores_ae.max():.5f}]"
+    )
+
+    print(
+        f"✓ VAE validation-selected threshold: "
+        f"{vae_threshold_opt['threshold']:.5f}"
+    )
+    print(
+        f"  Test score range: "
+        f"[{scores_vae.min():.5f}, {scores_vae.max():.5f}]"
+    )
+
+    print(
+        f"✓ Isolation Forest validation-selected threshold: "
+        f"{if_threshold_opt['threshold']:.5f}"
+    )
+    print(
+        f"  Test score range: "
+        f"[{iso_scores.min():.5f}, {iso_scores.max():.5f}]"
+    )
 
     # STEP 8: Evaluate all models
     print("\n" + "=" * 80)
     print("STEP 8: COMPUTING EVALUATION METRICS")
     print("=" * 80)
     
-    metrics_ae = evaluate_model(y_true, preds_ae, scores_ae, "Autoencoder")
-    metrics_vae = evaluate_model(y_true, preds_vae, scores_vae, "Variational Autoencoder")
-    metrics_if = evaluate_model(y_true, preds_if, iso_scores, "Isolation Forest")
+    metrics_ae = evaluate_model(
+        y_test, preds_ae, scores_ae, "Autoencoder"
+    )
+
+    metrics_vae = evaluate_model(
+        y_test, preds_vae, scores_vae, "Variational Autoencoder"
+    )
+
+    metrics_if = evaluate_model(
+        y_test, preds_if, iso_scores, "Isolation Forest"
+    )
     
     print("✓ Evaluation completed for all models")
 
@@ -427,11 +557,29 @@ def main(data_dir: str = "data", results_dir: str = "results"):
         "autoencoder": convert_to_serializable(metrics_ae),
         "variational_autoencoder": convert_to_serializable(metrics_vae),
         "isolation_forest": convert_to_serializable(metrics_if),
-        "test_set_size": int(len(X_test_corrupted)),
-        "n_anomalies_injected": int(n_anomalies),
-        "n_normal_samples": int(n_normal),
+
+        "validation_selected_thresholds": {
+            "autoencoder": float(ae_threshold_opt["threshold"]),
+            "variational_autoencoder": float(vae_threshold_opt["threshold"]),
+            "isolation_forest": float(if_threshold_opt["threshold"]),
+        },
+
+        "data_split": {
+            "train_size": int(len(X_train_scaled)),
+            "validation_size": int(len(X_val_scaled)),
+            "test_size": int(len(X_test_scaled)),
+        },
+
+        "validation_anomalies": int(len(val_anomaly_indices)),
+        "test_anomalies": int(len(test_anomaly_indices)),
+        "test_normal_samples": int(
+            len(y_test) - len(test_anomaly_indices)
+        ),
+
         "contamination_rate": float(args.frac),
         "noise_scale": float(args.scale),
+        "seed": int(config.SEED),
+        "test_corruption_seed": int(config.SEED + 1),
     }
     
     results_file = results_path / "model_comparison.json"
@@ -441,14 +589,17 @@ def main(data_dir: str = "data", results_dir: str = "results"):
     
     # Save detailed predictions for debugging
     predictions_df = pd.DataFrame({
-        "y_true": y_true,
+        "y_true": y_test,
         "ae_pred": preds_ae,
         "vae_pred": preds_vae,
         "if_pred": preds_if,
         "ae_score": scores_ae,
         "vae_score": scores_vae,
         "if_score": iso_scores,
-        "is_injected_anomaly": np.isin(np.arange(len(y_true)), anomaly_indices),
+        "is_injected_anomaly": np.isin(
+            np.arange(len(y_test)),
+            test_anomaly_indices
+        ),
     })
     
     predictions_file = results_path / "predictions_comparison.csv"
@@ -456,7 +607,7 @@ def main(data_dir: str = "data", results_dir: str = "results"):
     print(f"✓ Detailed predictions saved to {predictions_file}")
     
     # ROC curve data
-    roc_data = plot_roc_curves(y_true, scores_ae, iso_scores)
+    roc_data = plot_roc_curves(y_test, scores_ae, iso_scores)
     roc_file = results_path / "roc_data.json"
     
     roc_data_serializable = {

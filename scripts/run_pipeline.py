@@ -29,6 +29,8 @@ from src import preprocessing as prep
 from src.anomaly_injection import inject_anomalies
 from src.autoencoder_model import train_detector, score_anomalies, predict_anomalies, plot_loss_curves
 from src.blockchain_logger import PermissionedBlockchain
+from src.poa_blockchain import PoABlockchain
+from scripts.tamper_detection_test import test_tamper_detection
 
 import tensorflow as tf
 
@@ -109,19 +111,38 @@ def main(data_path="data/StudentPerformanceFactors.csv"):
     X_df, _ = prep.select_features(df_encoded)
     print(f"  Shape: {X_df.shape}")
 
-    # 2) Split into train/test
-    # Separate data: 75% for training the autoencoder, 25% for evaluation.
-    # We'll inject anomalies into the test set to simulate real-world scenarios.
-    print("\n[2] Splitting (75/25)...")
-    X_train, X_test = train_test_split(
-        X_df, test_size=config.TEST_SIZE, random_state=config.SEED
+    # 2) Split into train/validation/test
+    # Keep the final test set completely separate from model and threshold selection.
+    print("\n[2] Splitting (60/15/25)...")
+
+    # First reserve 25% as the untouched final test set.
+    X_train_val, X_test = train_test_split(
+        X_df,
+        test_size=config.TEST_SIZE,
+        random_state=config.SEED,
     )
 
-    # 3) Fit scaler on train data and scale both sets
-    # Normalize features to [0, 1] range. Fit scaler ONLY on training data
-    # to prevent data leakage, then apply to test data.
+    # Split the remaining 75% into 60% training and 15% validation.
+    # 15 / 75 = 0.20, so validation is 20% of X_train_val.
+    val_fraction_of_train_val = config.VAL_SIZE / (
+        config.TRAIN_SIZE + config.VAL_SIZE
+    )
+
+    X_train, X_val = train_test_split(
+        X_train_val,
+        test_size=val_fraction_of_train_val,
+        random_state=config.SEED,
+    )
+
+    print(f"  Train:      {len(X_train)}")
+    print(f"  Validation: {len(X_val)}")
+    print(f"  Test:       {len(X_test)}")
+
+    # 3) Fit scaler ONLY on training data.
+    # Apply the same fitted scaler to validation and test data.
     print("\n[3] Normalizing...")
     scaler, X_train_scaled = prep.normalize_features(X_train)
+    X_val_scaled = scaler.transform(X_val)
     X_test_scaled = scaler.transform(X_test)
 
     # 4) Train autoencoder on clean training data
@@ -130,11 +151,11 @@ def main(data_path="data/StudentPerformanceFactors.csv"):
     print("\n[4] Training autoencoder...")
     model, _, history = train_detector(
         X_train_scaled,
+        X_val=X_val_scaled,
         contamination=config.INJECTION_FRAC,
         bottleneck_dim=config.BOTTLENECK_DIM,
         epochs=config.EPOCHS,
         batch_size=config.BATCH_SIZE,
-        val_split=0.15,  # Use 15% of train for validation
         random_state=config.SEED,
     )
     
@@ -142,27 +163,59 @@ def main(data_path="data/StudentPerformanceFactors.csv"):
     print("\n[4b] Saving loss curves...")
     plot_loss_curves(history, output_path="outputs/autoencoder_loss_curves.png")
 
-    # 5) Inject synthetic anomalies into test data and find optimal detection threshold
-    # Add noise to simulate real anomalies. Track which samples are injected (ground truth).
-    # Then find the threshold that best separates normal from injected samples.
+    # 5) Inject synthetic anomalies independently into validation and test sets.
+    # Validation anomalies are used ONLY for threshold selection.
+    # Test anomalies are used ONLY for final evaluation.
     print(f"\n[5] Injecting anomalies ({config.INJECTION_FRAC:.0%})...")
+
+    # ----- Validation set -----
+    X_val_inj_df, val_anom_idx = inject_anomalies(
+        pd.DataFrame(X_val_scaled),
+        method="noise",
+        frac=config.INJECTION_FRAC,
+        scale=config.NOISE_SCALE,
+        random_state=config.SEED,
+    )
+
+    X_val_inj = X_val_inj_df.values
+    y_val = make_labels(len(X_val_inj), val_anom_idx)
+
+    # Select threshold using validation labels only.
+    val_errors = score_anomalies(model, X_val_inj)
+    best = find_best_threshold(val_errors, y_val)
+    threshold = best["threshold"]
+
+    print(f"  Validation anomalies: {len(val_anom_idx)}")
+    print(f"  Selected threshold:   {threshold:.6f}")
+    print(f"  Validation F1:         {best['f1']:.4f}")
+
+    # ----- Final test set -----
+    # Use a different random seed so the test corruption is generated
+    # independently from the validation corruption.
     X_test_inj_df, test_anom_idx = inject_anomalies(
         pd.DataFrame(X_test_scaled),
         method="noise",
         frac=config.INJECTION_FRAC,
         scale=config.NOISE_SCALE,
+        random_state=config.SEED + 1,
     )
+
     X_test_inj = X_test_inj_df.values
     y_test = make_labels(len(X_test_inj), test_anom_idx)
 
-    test_errors = score_anomalies(model, X_test_inj)
-    best = find_best_threshold(test_errors, y_test)
-    threshold = best["threshold"]
+    print(f"  Test anomalies:       {len(test_anom_idx)}")
 
     # 6) Use trained model to predict anomalies on test data
     # Apply the optimal threshold: samples with error > threshold are flagged as anomalies.
     print(f"\n[6] Detecting (threshold={threshold:.4f})...")
-    preds = predict_anomalies(model, X_test_inj, threshold)
+
+    # Compute reconstruction errors on the untouched final test set.
+    # These scores are used only for final evaluation (e.g. ROC-AUC),
+    # NOT for threshold selection.
+    test_errors = score_anomalies(model, X_test_inj)
+
+    # Apply the threshold that was already selected on validation data.
+    preds = np.where(test_errors > threshold, -1, 1)
     y_pred = (preds == -1).astype(int)
 
     # 7) Calculate detection performance metrics
@@ -187,33 +240,60 @@ def main(data_path="data/StudentPerformanceFactors.csv"):
     print(f"Detected:  {int(np.sum(y_pred))}/{len(y_test)}")
     print(f"TP/FP/FN:  {tp}/{fp}/{fn}")
 
-    # 8) Log detection results to blockchain for audit trail
-    # Uses permissioned blockchain where only authorized users (detector, auditor)
-    # can write/verify logs. This ensures tamper-proof record of anomalies detected.
-    print(f"\n[7] Logging to permissioned blockchain ({config.LEDGER_PATH})...")
-    blockchain = PermissionedBlockchain(ledger_path=config.LEDGER_PATH)
-    
-    # Login as detector user (has write permission)
-    blockchain.login("detector", "detector_password")
-    print(f"  ✓ Authenticated as '{blockchain.current_user.username}' (role: {blockchain.current_user.role})")
-    
+    # 8) Log detection results to permissioned PoA blockchain
+    # Uses three authorized validator nodes with round-robin Proof-of-Authority.
+    # Each validated block is replicated across all validator ledgers.
+    print("\n[7] Logging to permissioned PoA blockchain...")
+
+    poa_blockchain = PoABlockchain(
+        ledger_dir="results/poa_ledgers"
+    )
+
     # Log each detected anomaly
     anomaly_indices = [int(i) for i, p in enumerate(preds) if p == -1]
+
     for idx in anomaly_indices:
-        blockchain.log_anomaly(idx, {"score": float(test_errors[idx])})
-    
-    print(f"  ✓ Logged {len(anomaly_indices)} anomalies to blockchain")
-    
-    # Verify blockchain integrity (auditor verification)
-    blockchain.logout()
-    blockchain.login("auditor", "auditor_password")
-    is_valid = blockchain.verify_blockchain()
+
+        # Select the next authorized validator using round-robin PoA
+        validator = poa_blockchain.get_current_validator()
+
+        anomaly_data = {
+            "sample_index": idx,
+            "score": float(test_errors[idx]),
+            "detector": "autoencoder",
+        }
+
+        poa_blockchain.create_block(
+            validator=validator,
+            anomaly_data=anomaly_data,
+        )
+
+    print(
+        f"  ✓ Logged {len(anomaly_indices)} anomalies "
+        f"to permissioned PoA blockchain"
+    )
+
+    # Verify all validator ledgers and replication consistency
+    is_valid = poa_blockchain.verify_all_validators()
+
     if is_valid:
-        print(f"  ✓ Blockchain verification passed (role: {blockchain.current_user.role})")
+        print("  ✓ PoA blockchain verification passed")
+        print("  ✓ 3/3 validator ledgers valid and identical")
     else:
-        print(f"  ✗ Blockchain verification FAILED - possible tampering detected!")
-    
-    blockchain.logout()
+        print(
+            "  ✗ PoA blockchain verification FAILED - "
+            "possible tampering or replica inconsistency detected!"
+        )
+
+    # Run controlled blockchain tampering experiment
+    print("\n[8] Running controlled blockchain tampering experiment...")
+
+    tamper_results = test_tamper_detection()
+
+    if tamper_results["tampering_detected"]:
+        print("  ✓ Controlled tampering successfully detected")
+    else:
+        print("  ✗ Controlled tampering was not detected")
 
     # 9) Save all results to JSON file for later analysis and reporting
     # Store configuration, metrics, threshold, and anomaly detection results.

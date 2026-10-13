@@ -4,7 +4,7 @@ Transforms raw data into format suitable for autoencoder:
 1. Handle missing values (median for numeric, mode for categorical)
 2. Encode categorical features (one-hot encoding)
 3. Select features (remove labels)
-4. Normalize to [0,1] with zero mean
+4. Standardize features to zero mean and unit variance
 """
 import pandas as pd
 from typing import List, Tuple

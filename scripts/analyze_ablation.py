@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 # Set seeds for reproducibility (matching ablation_study.py)
-SEEDS = [41, 42, 43]
+SEEDS = [41, 42, 43, 44, 45]
 SEEDS_STR = ", ".join(map(str, SEEDS))
 
 # Set style for better-looking plots
@@ -85,15 +85,6 @@ def extract_comparison_data(results: Dict[str, Any]) -> pd.DataFrame:
                 **stats
             }
             
-            # Extract feature subset percentage from variant name if applicable
-            if category == "feature_subset" and "pct" in variant_name:
-                # Extract percentage from names like "features_50pct"
-                pct_str = variant_name.split("_")[-1].replace("pct", "")
-                try:
-                    row["feature_subset_pct"] = float(pct_str) / 100.0
-                except ValueError:
-                    pass
-            
             rows.append(row)
     
     return pd.DataFrame(rows)
@@ -105,6 +96,8 @@ def plot_component_comparison(df: pd.DataFrame, results_dir: Path):
     fig, axes = plt.subplots(3, 3, figsize=(18, 14))
     fig.suptitle(f"Ablation Study: Component Impact on Performance - Mean Across Seeds: {SEEDS_STR}", 
                  fontsize=16, fontweight="bold", y=0.995)
+
+    baseline_row = df[df["variant"] == "baseline"].iloc[0]
     
     # 1. Bottleneck Dimension
     ax = axes[0, 0]
@@ -215,7 +208,6 @@ def plot_component_comparison(df: pd.DataFrame, results_dir: Path):
     
     # 7. Key Metrics Comparison
     ax = axes[2, 0]
-    baseline_row = df[df["variant"] == "baseline"].iloc[0]
     metrics = ["f1", "precision", "recall", "roc_auc"]
     values = [baseline_row[m] for m in metrics]
     colors = plt.cm.Set3(np.linspace(0, 1, len(metrics)))
@@ -308,7 +300,8 @@ def generate_analysis_report(results: Dict[str, Any], df: pd.DataFrame,
     report.append(f"  Random Seeds: {SEEDS_STR}")
     report.append(f"  Purpose: Systematic ablation study of autoencoder components")
     report.append(f"  Components tested: bottleneck dimension, network depth, dropout rate,")
-    report.append(f"                     activation function, feature subset, batch size, epoch budget\n")
+    report.append(f"                     activation function, batch size, epoch budget, learning rate")
+    report.append(f"                     and noise scale sensitivity\n")
     
     # Data Summary
     report.append("DATA SUMMARY")
@@ -324,33 +317,33 @@ def generate_analysis_report(results: Dict[str, Any], df: pd.DataFrame,
     report.append("BASELINE PERFORMANCE")
     report.append("-" * 80)
     baseline = results["baseline"]
-    
-    # Get seed 41 results only
-    baseline_seed_41 = None
-    if "all_runs" in baseline:
-        for run in baseline["all_runs"]:
-            if run.get("seed") == 41:
-                baseline_seed_41 = run
-                break
-    
-    if baseline_seed_41:
-        baseline_f1 = baseline_seed_41["f1"]
-        baseline_roc_auc = baseline_seed_41["roc_auc"]
-        baseline_accuracy = baseline_seed_41["accuracy"]
-        baseline_precision = baseline_seed_41["precision"]
-        baseline_recall = baseline_seed_41["recall"]
-        baseline_specificity = baseline_seed_41["specificity"]
+
+    # Get mean results across the five seeds
+    baseline_runs = baseline["all_runs"]
+    baseline_f1_values = [run["f1"] for run in baseline_runs]
+    baseline_roc_auc_values = [run["roc_auc"] for run in baseline_runs]
+    baseline_accuracy_values = [run["accuracy"] for run in baseline_runs]
+    baseline_precision_values = [run["precision"] for run in baseline_runs]
+    baseline_recall_values = [run["recall"] for run in baseline_runs]
+    baseline_specificity_values = [run["specificity"] for run in baseline_runs]
+
+    baseline_f1 = np.mean(baseline_f1_values)
+    baseline_roc_auc = np.mean(baseline_roc_auc_values)
+    baseline_accuracy = np.mean(baseline_accuracy_values)
+    baseline_precision = np.mean(baseline_precision_values)
+    baseline_recall = np.mean(baseline_recall_values)
+    baseline_specificity = np.mean(baseline_specificity_values)
     
     report.append(f"  Configuration:")
     for key, val in baseline["config"].items():
         report.append(f"    {key}: {val}")
-    report.append(f"\n  Metrics (Seed 41):")
-    report.append(f"    F1 Score:  {baseline_f1:.4f}")
-    report.append(f"    ROC-AUC:   {baseline_roc_auc:.4f}")
-    report.append(f"    Accuracy:  {baseline_accuracy:.4f}")
-    report.append(f"    Precision: {baseline_precision:.4f}")
-    report.append(f"    Recall:    {baseline_recall:.4f}")
-    report.append(f"    Specificity: {baseline_specificity:.4f}\n")
+    report.append(f"\n  Metrics (Mean ± SD across 5 seeds):")
+    report.append(f"    F1 Score:  {baseline_f1:.4f} ± {np.std(baseline_f1_values, ddof=1):.4f}")
+    report.append(f"    ROC-AUC:   {baseline_roc_auc:.4f} ± {np.std(baseline_roc_auc_values, ddof=1):.4f}")
+    report.append(f"    Accuracy:  {baseline_accuracy:.4f} ± {np.std(baseline_accuracy_values, ddof=1):.4f}")
+    report.append(f"    Precision: {baseline_precision:.4f} ± {np.std(baseline_precision_values, ddof=1):.4f}")
+    report.append(f"    Recall:    {baseline_recall:.4f} ± {np.std(baseline_recall_values, ddof=1):.4f}")
+    report.append(f"    Specificity: {baseline_specificity:.4f} ± {np.std(baseline_specificity_values, ddof=1):.4f}\n")
     
     # Component Analysis
     report.append("COMPONENT IMPACT ANALYSIS")
@@ -369,8 +362,13 @@ def generate_analysis_report(results: Dict[str, Any], df: pd.DataFrame,
                     seed = run.get("seed", "?")
                     f1 = run.get("f1", 0)
                     roc_auc = run.get("roc_auc", 0)
-                    report.append(f"    Seed {seed}: F1={f1:.4f} ROC-AUC={roc_auc:.4f}")     
-        max_f1 = max(run.get("f1", 0) for variant in variants.values() for run in variant.get("all_runs", []))
+                    report.append(f"    Seed {seed}: F1={f1:.4f} ROC-AUC={roc_auc:.4f}")
+
+                f1_values = [run.get("f1", 0) for run in variant_info["all_runs"]]
+                roc_values = [run.get("roc_auc", 0) for run in variant_info["all_runs"]]
+                report.append(f"    Mean: F1={np.mean(f1_values):.4f} ± {np.std(f1_values, ddof=1):.4f} "
+                              f"ROC-AUC={np.mean(roc_values):.4f} ± {np.std(roc_values, ddof=1):.4f}")
+        
         # Find and highlight best variant overall (using mean F1 to match KEY FINDINGS)
         best_mean_f1 = -1
         best_variant_name = None
@@ -386,32 +384,21 @@ def generate_analysis_report(results: Dict[str, Any], df: pd.DataFrame,
         
         if best_variant_name:
             improvement = (best_mean_f1 - baseline_f1) / baseline_f1 * 100
-            report.append(f"  ✓ Best: {best_variant_name:30} F1={max_f1:.4f} ({improvement:+.2f}%)")
+            if category == "noise_scale":
+                report.append(f"  ✓ Highest: {best_variant_name:27} Mean F1={best_mean_f1:.4f}")
+            else:
+                report.append(f"  ✓ Best: {best_variant_name:30} Mean F1={best_mean_f1:.4f} ({improvement:+.2f}%)")
     
     # Key Findings
     report.append("\n\n" + "=" * 80)
     report.append("KEY FINDINGS & RECOMMENDATIONS")
     report.append("=" * 80)
     
-    # Best overall variant with seed analysis
-    non_baseline = df[df["variant"] != "baseline"].copy()
+    # Best overall variant
+    non_baseline = df[(df["variant"] != "baseline") & (df["category"] != "noise_scale")].copy()
     best_variant_idx = non_baseline["f1"].idxmax()
     best_variant = non_baseline.loc[best_variant_idx]
     baseline_row = df[df["variant"] == "baseline"].iloc[0]
-    
-    # Find best seed for best variant
-    best_variant_name = best_variant['variant']
-    best_variant_category = best_variant['category']
-    best_seed_data = None
-    if best_variant_category in results["variations"]:
-        variant_results = results["variations"][best_variant_category][best_variant_name]
-        if "all_runs" in variant_results:
-            best_seed_data = max(variant_results["all_runs"], key=lambda x: x["f1"])
-    
-    # Find best seed for baseline
-    baseline_seed_data = None
-    if "all_runs" in results["baseline"]:
-        baseline_seed_data = max(results["baseline"]["all_runs"], key=lambda x: x["f1"])
     
     report.append(f"\nBest Overall Configuration:")
     report.append(f"  Variant: {best_variant['variant']}")
@@ -424,10 +411,9 @@ def generate_analysis_report(results: Dict[str, Any], df: pd.DataFrame,
             if pd.isna(value):
                 value = baseline_row[key]
             report.append(f"  {key}: {value}")
-    if best_seed_data:
-        report.append(f"  Best Seed: {best_seed_data['seed']}")
-        report.append(f"  F1 Score: {best_seed_data['f1']:.4f}")
-        report.append(f"  ROC-AUC: {best_seed_data['roc_auc']:.4f}")
+
+    report.append(f"  Mean F1 Score: {best_variant['f1']:.4f}")
+    report.append(f"  Mean ROC-AUC: {best_variant['roc_auc']:.4f}")
     improvement = (best_variant['f1'] - baseline_f1) / baseline_f1 * 100
     report.append(f"  Improvement over baseline: {improvement:+.2f}%\n")
     
@@ -436,23 +422,29 @@ def generate_analysis_report(results: Dict[str, Any], df: pd.DataFrame,
     if "all_runs" in results["baseline"]:
         for run in results["baseline"]["all_runs"]:
             report.append(f"  Seed {run['seed']}: F1={run['f1']:.4f}, ROC-AUC={run['roc_auc']:.4f}")
-        if baseline_seed_data:
-            report.append(f"  ✓ Best Seed: {baseline_seed_data['seed']} (F1={baseline_seed_data['f1']:.4f})\n")
     
     # Component rankings
-    report.append("Component Sensitivity Ranking (by max F1 improvement):")
+    report.append("\nComponent Sensitivity Ranking (by mean F1 improvement):")
     for category in results["variations"].keys():
+        if category == "noise_scale":
+            continue
         cat_df = df[df["category"] == category]
         max_f1 = cat_df["f1"].max()
         improvement = (max_f1 - baseline_f1) / baseline_f1 * 100
         report.append(f"  {category:25} {improvement:+.2f}%")
+
+    # Noise scale sensitivity
+    if "noise_scale" in results["variations"]:
+        report.append("\nNoise Scale Sensitivity:")
+        report.append("  Higher noise scales represent stronger synthetic anomalies and are")
+        report.append("  treated as a sensitivity analysis rather than model selection.")
     
     # Recommendations
     report.append("\n\nRecommendations:")
-    report.append("  1. Consider configurations that significantly improve F1 (>2% improvement)")
+    report.append("  1. Compare configurations using mean performance across all seeds")
     report.append("  2. Balance F1, Precision, and Recall based on use case requirements")
-    report.append("  3. Monitor for overfitting when using reduced feature sets")
-    report.append("  4. Test recommended configurations on hold-out test set before deployment")
+    report.append("  3. Treat noise scale as anomaly severity rather than model tuning")
+    report.append("  4. Avoid selecting configurations based on a single random seed")
     
     # Write report with UTF-8 encoding to handle special characters (✓, etc.)
     report_text = "\n".join(report)
@@ -476,7 +468,7 @@ def analyze_ablation_study(
         results_dir = Path("results")
     
     if results_path is None:
-        results_path = results_dir / "ablation_study.json"
+        results_path = results_dir / "ablation_study_revised.json"
     
     print("\n" + "█" * 80)
     print("█ ABLATION STUDY ANALYSIS")

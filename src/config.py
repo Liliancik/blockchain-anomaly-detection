@@ -2,7 +2,8 @@
 
 SEED = 41  # Random seed for reproducibility
 
-TRAIN_SIZE = 0.75
+TRAIN_SIZE = 0.60
+VAL_SIZE = 0.15
 TEST_SIZE = 0.25
 
 INJECTION_FRAC = 0.02  # Synthetic anomalies for evaluation

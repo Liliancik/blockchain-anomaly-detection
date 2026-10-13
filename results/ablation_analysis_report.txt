@@ -1,20 +1,21 @@
 ================================================================================
 ABLATION STUDY ANALYSIS REPORT
 ================================================================================
-Timestamp: 2026-05-07T20:44:25.870060
-Random Seeds: 41, 42, 43
+Timestamp: 2026-09-23T18:45:24.705678
+Random Seeds: 41, 42, 43, 44, 45
 
 EXPERIMENTAL SETUP
 --------------------------------------------------------------------------------
-  Random Seeds: 41, 42, 43
+  Random Seeds: 41, 42, 43, 44, 45
   Purpose: Systematic ablation study of autoencoder components
   Components tested: bottleneck dimension, network depth, dropout rate,
-                     activation function, feature subset, batch size, epoch budget
+                     activation function, batch size, epoch budget, learning rate
+                     and noise scale sensitivity
 
 DATA SUMMARY
 --------------------------------------------------------------------------------
   Total features: 28
-  Training samples: 4955 (normal only)
+  Training samples: 3964 (normal only)
   Test samples: 1652
   Normal test samples: N/A
   Abnormal test samples: N/A
@@ -29,16 +30,16 @@ BASELINE PERFORMANCE
     batch_size: 16
     epochs: 80
     learning_rate: 0.0005
-    noise_scale: 6.0
+    noise_scale: 6
     injection_frac: 0.02
 
-  Metrics (Seed 41):
-    F1 Score:  0.9254
-    ROC-AUC:   0.9981
-    Accuracy:  0.9970
-    Precision: 0.9118
-    Recall:    0.9394
-    Specificity: 0.9981
+  Metrics (Mean ± SD across 5 seeds):
+    F1 Score:  0.9062 ± 0.0243
+    ROC-AUC:   0.9827 ± 0.0170
+    Accuracy:  0.9964 ± 0.0010
+    Precision: 0.9367 ± 0.0357
+    Recall:    0.8788 ± 0.0371
+    Specificity: 0.9988 ± 0.0008
 
 COMPONENT IMPACT ANALYSIS
 --------------------------------------------------------------------------------
@@ -46,174 +47,244 @@ COMPONENT IMPACT ANALYSIS
 BOTTLENECK DIMENSION
   ----------------------------------------------------------------------------
   bottleneck_2
-    Seed 41: F1=0.9254 ROC-AUC=0.9986
-    Seed 42: F1=0.9524 ROC-AUC=0.9991
-    Seed 43: F1=0.9552 ROC-AUC=0.9993
+    Seed 41: F1=0.8475 ROC-AUC=0.9453
+    Seed 42: F1=0.9062 ROC-AUC=0.9984
+    Seed 43: F1=0.8621 ROC-AUC=0.9985
+    Seed 44: F1=0.9206 ROC-AUC=0.9826
+    Seed 45: F1=0.9032 ROC-AUC=0.9825
+    Mean: F1=0.8879 ± 0.0314 ROC-AUC=0.9814 ± 0.0217
   bottleneck_4
-    Seed 41: F1=0.9254 ROC-AUC=0.9981
-    Seed 42: F1=0.9143 ROC-AUC=0.9990
-    Seed 43: F1=0.9552 ROC-AUC=0.9966
+    Seed 41: F1=0.8889 ROC-AUC=0.9538
+    Seed 42: F1=0.9394 ROC-AUC=0.9974
+    Seed 43: F1=0.9206 ROC-AUC=0.9917
+    Seed 44: F1=0.8788 ROC-AUC=0.9839
+    Seed 45: F1=0.9032 ROC-AUC=0.9868
+    Mean: F1=0.9062 ± 0.0243 ROC-AUC=0.9827 ± 0.0170
   bottleneck_8
-    Seed 41: F1=0.9524 ROC-AUC=0.9982
-    Seed 42: F1=0.9552 ROC-AUC=0.9975
-    Seed 43: F1=0.9552 ROC-AUC=0.9974
+    Seed 41: F1=0.8621 ROC-AUC=0.9583
+    Seed 42: F1=0.9538 ROC-AUC=0.9964
+    Seed 43: F1=0.9538 ROC-AUC=0.9987
+    Seed 44: F1=0.9062 ROC-AUC=0.9711
+    Seed 45: F1=0.9180 ROC-AUC=0.9917
+    Mean: F1=0.9188 ± 0.0382 ROC-AUC=0.9832 ± 0.0177
   bottleneck_16
-    Seed 41: F1=0.9552 ROC-AUC=0.9992
-    Seed 42: F1=0.9552 ROC-AUC=0.9997
-    Seed 43: F1=0.9552 ROC-AUC=0.9981
+    Seed 41: F1=0.8814 ROC-AUC=0.9657
+    Seed 42: F1=0.9394 ROC-AUC=0.9982
+    Seed 43: F1=0.9688 ROC-AUC=1.0000
+    Seed 44: F1=0.9355 ROC-AUC=0.9833
+    Seed 45: F1=0.9000 ROC-AUC=0.9930
+    Mean: F1=0.9250 ± 0.0345 ROC-AUC=0.9880 ± 0.0141
   bottleneck_32
-    Seed 41: F1=0.9552 ROC-AUC=0.9981
-    Seed 42: F1=0.9254 ROC-AUC=0.9990
-    Seed 43: F1=0.9524 ROC-AUC=0.9990
-  ✓ Best: bottleneck_16                  F1=0.9552 (+3.23%)
+    Seed 41: F1=0.8889 ROC-AUC=0.9934
+    Seed 42: F1=0.9254 ROC-AUC=0.9961
+    Seed 43: F1=0.9000 ROC-AUC=0.9986
+    Seed 44: F1=0.9062 ROC-AUC=0.9964
+    Seed 45: F1=0.9000 ROC-AUC=0.9935
+    Mean: F1=0.9041 ± 0.0134 ROC-AUC=0.9956 ± 0.0022
+  ✓ Best: bottleneck_16                  Mean F1=0.9250 (+2.08%)
 
 NETWORK DEPTH
   ----------------------------------------------------------------------------
   depth_1
-    Seed 41: F1=0.9254 ROC-AUC=0.9991
-    Seed 42: F1=0.9254 ROC-AUC=0.9989
-    Seed 43: F1=0.9524 ROC-AUC=0.9989
+    Seed 41: F1=0.8814 ROC-AUC=0.9603
+    Seed 42: F1=0.9538 ROC-AUC=0.9982
+    Seed 43: F1=0.8852 ROC-AUC=0.9961
+    Seed 44: F1=0.9206 ROC-AUC=0.9686
+    Seed 45: F1=0.7778 ROC-AUC=0.9822
+    Mean: F1=0.8838 ± 0.0662 ROC-AUC=0.9811 ± 0.0166
   depth_2
-    Seed 41: F1=0.9552 ROC-AUC=0.9998
-    Seed 42: F1=0.9206 ROC-AUC=0.9976
-    Seed 43: F1=0.9552 ROC-AUC=0.9965
+    Seed 41: F1=0.9000 ROC-AUC=0.9609
+    Seed 42: F1=0.9180 ROC-AUC=0.9986
+    Seed 43: F1=0.9231 ROC-AUC=0.9970
+    Seed 44: F1=0.9032 ROC-AUC=0.9751
+    Seed 45: F1=0.8852 ROC-AUC=0.9888
+    Mean: F1=0.9059 ± 0.0151 ROC-AUC=0.9841 ± 0.0159
   depth_3
-    Seed 41: F1=0.9254 ROC-AUC=0.9981
-    Seed 42: F1=0.9143 ROC-AUC=0.9990
-    Seed 43: F1=0.9552 ROC-AUC=0.9966
+    Seed 41: F1=0.8889 ROC-AUC=0.9538
+    Seed 42: F1=0.9394 ROC-AUC=0.9974
+    Seed 43: F1=0.9206 ROC-AUC=0.9917
+    Seed 44: F1=0.8788 ROC-AUC=0.9839
+    Seed 45: F1=0.9032 ROC-AUC=0.9868
+    Mean: F1=0.9062 ± 0.0243 ROC-AUC=0.9827 ± 0.0170
   depth_4
-    Seed 41: F1=0.9552 ROC-AUC=0.9969
-    Seed 42: F1=0.9524 ROC-AUC=0.9994
-    Seed 43: F1=0.9254 ROC-AUC=0.9997
-  ✓ Best: depth_4                        F1=0.9552 (+2.05%)
+    Seed 41: F1=0.8621 ROC-AUC=0.9470
+    Seed 42: F1=0.9032 ROC-AUC=0.9961
+    Seed 43: F1=0.8814 ROC-AUC=0.9970
+    Seed 44: F1=0.8667 ROC-AUC=0.9807
+    Seed 45: F1=0.8475 ROC-AUC=0.9857
+    Mean: F1=0.8722 ± 0.0212 ROC-AUC=0.9813 ± 0.0204
+  ✓ Best: depth_3                        Mean F1=0.9062 (+0.00%)
 
 DROPOUT RATE
   ----------------------------------------------------------------------------
   dropout_0.0
-    Seed 41: F1=0.9552 ROC-AUC=0.9969
-    Seed 42: F1=0.9552 ROC-AUC=0.9993
-    Seed 43: F1=0.9254 ROC-AUC=0.9969
+    Seed 41: F1=0.8852 ROC-AUC=0.9423
+    Seed 42: F1=0.9688 ROC-AUC=0.9988
+    Seed 43: F1=0.8889 ROC-AUC=0.9937
+    Seed 44: F1=0.9032 ROC-AUC=0.9752
+    Seed 45: F1=0.9000 ROC-AUC=0.9896
+    Mean: F1=0.9092 ± 0.0341 ROC-AUC=0.9799 ± 0.0228
   dropout_0.1
-    Seed 41: F1=0.9254 ROC-AUC=0.9981
-    Seed 42: F1=0.9143 ROC-AUC=0.9990
-    Seed 43: F1=0.9552 ROC-AUC=0.9966
+    Seed 41: F1=0.8889 ROC-AUC=0.9538
+    Seed 42: F1=0.9394 ROC-AUC=0.9974
+    Seed 43: F1=0.9206 ROC-AUC=0.9917
+    Seed 44: F1=0.8788 ROC-AUC=0.9839
+    Seed 45: F1=0.9032 ROC-AUC=0.9868
+    Mean: F1=0.9062 ± 0.0243 ROC-AUC=0.9827 ± 0.0170
   dropout_0.2
-    Seed 41: F1=0.9552 ROC-AUC=0.9994
-    Seed 42: F1=0.9254 ROC-AUC=0.9972
-    Seed 43: F1=0.9552 ROC-AUC=0.9992
+    Seed 41: F1=0.8852 ROC-AUC=0.9638
+    Seed 42: F1=0.9355 ROC-AUC=0.9986
+    Seed 43: F1=0.9062 ROC-AUC=0.9916
+    Seed 44: F1=0.8788 ROC-AUC=0.9871
+    Seed 45: F1=0.9206 ROC-AUC=0.9906
+    Mean: F1=0.9053 ± 0.0237 ROC-AUC=0.9863 ± 0.0133
   dropout_0.3
-    Seed 41: F1=0.9524 ROC-AUC=0.9969
-    Seed 42: F1=0.9552 ROC-AUC=0.9978
-    Seed 43: F1=0.9254 ROC-AUC=0.9983
-  ✓ Best: dropout_0.2                    F1=0.9552 (+2.15%)
+    Seed 41: F1=0.8852 ROC-AUC=0.9714
+    Seed 42: F1=0.9355 ROC-AUC=0.9974
+    Seed 43: F1=0.8889 ROC-AUC=0.9964
+    Seed 44: F1=0.9000 ROC-AUC=0.9713
+    Seed 45: F1=0.8750 ROC-AUC=0.9799
+    Mean: F1=0.8969 ± 0.0233 ROC-AUC=0.9833 ± 0.0129
+  ✓ Best: dropout_0.0                    Mean F1=0.9092 (+0.34%)
 
 ACTIVATION FUNCTION
   ----------------------------------------------------------------------------
   activation_relu
-    Seed 41: F1=0.9254 ROC-AUC=0.9981
-    Seed 42: F1=0.9143 ROC-AUC=0.9990
-    Seed 43: F1=0.9552 ROC-AUC=0.9966
+    Seed 41: F1=0.8889 ROC-AUC=0.9538
+    Seed 42: F1=0.9394 ROC-AUC=0.9974
+    Seed 43: F1=0.9206 ROC-AUC=0.9917
+    Seed 44: F1=0.8788 ROC-AUC=0.9839
+    Seed 45: F1=0.9032 ROC-AUC=0.9868
+    Mean: F1=0.9062 ± 0.0243 ROC-AUC=0.9827 ± 0.0170
   activation_sigmoid
-    Seed 41: F1=0.9524 ROC-AUC=0.9979
-    Seed 42: F1=0.9206 ROC-AUC=0.9976
-    Seed 43: F1=0.9254 ROC-AUC=0.9987
+    Seed 41: F1=0.8421 ROC-AUC=0.9527
+    Seed 42: F1=0.9180 ROC-AUC=0.9968
+    Seed 43: F1=0.8814 ROC-AUC=0.9972
+    Seed 44: F1=0.8667 ROC-AUC=0.9827
+    Seed 45: F1=0.8889 ROC-AUC=0.9792
+    Mean: F1=0.8794 ± 0.0280 ROC-AUC=0.9817 ± 0.0182
   activation_tanh
-    Seed 41: F1=0.9552 ROC-AUC=0.9979
-    Seed 42: F1=0.9552 ROC-AUC=0.9980
-    Seed 43: F1=0.9552 ROC-AUC=0.9976
-  ✓ Best: activation_tanh                F1=0.9552 (+3.23%)
+    Seed 41: F1=0.8621 ROC-AUC=0.9359
+    Seed 42: F1=0.9180 ROC-AUC=0.9968
+    Seed 43: F1=0.9524 ROC-AUC=0.9944
+    Seed 44: F1=0.9032 ROC-AUC=0.9791
+    Seed 45: F1=0.9000 ROC-AUC=0.9852
+    Mean: F1=0.9071 ± 0.0326 ROC-AUC=0.9783 ± 0.0247
+  ✓ Best: activation_tanh                Mean F1=0.9071 (+0.11%)
 
 BATCH SIZE
   ----------------------------------------------------------------------------
   batch_size_8
-    Seed 41: F1=0.9254 ROC-AUC=0.9978
-    Seed 42: F1=0.9552 ROC-AUC=0.9988
-    Seed 43: F1=0.9552 ROC-AUC=0.9990
+    Seed 41: F1=0.8852 ROC-AUC=0.9591
+    Seed 42: F1=0.9524 ROC-AUC=0.9986
+    Seed 43: F1=0.9062 ROC-AUC=0.9971
+    Seed 44: F1=0.9032 ROC-AUC=0.9721
+    Seed 45: F1=0.8475 ROC-AUC=0.9905
+    Mean: F1=0.8989 ± 0.0380 ROC-AUC=0.9835 ± 0.0172
   batch_size_16
-    Seed 41: F1=0.9254 ROC-AUC=0.9981
-    Seed 42: F1=0.9143 ROC-AUC=0.9990
-    Seed 43: F1=0.9552 ROC-AUC=0.9966
+    Seed 41: F1=0.8889 ROC-AUC=0.9538
+    Seed 42: F1=0.9394 ROC-AUC=0.9974
+    Seed 43: F1=0.9206 ROC-AUC=0.9917
+    Seed 44: F1=0.8788 ROC-AUC=0.9839
+    Seed 45: F1=0.9032 ROC-AUC=0.9868
+    Mean: F1=0.9062 ± 0.0243 ROC-AUC=0.9827 ± 0.0170
   batch_size_32
-    Seed 41: F1=0.9552 ROC-AUC=0.9988
-    Seed 42: F1=0.9552 ROC-AUC=0.9992
-    Seed 43: F1=0.9552 ROC-AUC=0.9970
-  ✓ Best: batch_size_32                  F1=0.9552 (+3.23%)
+    Seed 41: F1=0.8621 ROC-AUC=0.9678
+    Seed 42: F1=0.9375 ROC-AUC=0.9971
+    Seed 43: F1=0.9206 ROC-AUC=0.9992
+    Seed 44: F1=0.9032 ROC-AUC=0.9845
+    Seed 45: F1=0.9062 ROC-AUC=0.9838
+    Mean: F1=0.9059 ± 0.0280 ROC-AUC=0.9865 ± 0.0126
+  ✓ Best: batch_size_16                  Mean F1=0.9062 (+0.00%)
 
 EPOCHS
   ----------------------------------------------------------------------------
   epochs_40
-    Seed 41: F1=0.9254 ROC-AUC=0.9991
-    Seed 42: F1=0.9552 ROC-AUC=0.9988
-    Seed 43: F1=0.9552 ROC-AUC=0.9984
+    Seed 41: F1=0.8621 ROC-AUC=0.9566
+    Seed 42: F1=0.9524 ROC-AUC=0.9975
+    Seed 43: F1=0.9231 ROC-AUC=0.9956
+    Seed 44: F1=0.8889 ROC-AUC=0.9824
+    Seed 45: F1=0.9000 ROC-AUC=0.9862
+    Mean: F1=0.9053 ± 0.0343 ROC-AUC=0.9837 ± 0.0164
   epochs_80
-    Seed 41: F1=0.9254 ROC-AUC=0.9981
-    Seed 42: F1=0.9143 ROC-AUC=0.9990
-    Seed 43: F1=0.9552 ROC-AUC=0.9966
+    Seed 41: F1=0.8889 ROC-AUC=0.9538
+    Seed 42: F1=0.9394 ROC-AUC=0.9974
+    Seed 43: F1=0.9206 ROC-AUC=0.9917
+    Seed 44: F1=0.8788 ROC-AUC=0.9839
+    Seed 45: F1=0.9032 ROC-AUC=0.9868
+    Mean: F1=0.9062 ± 0.0243 ROC-AUC=0.9827 ± 0.0170
   epochs_120
-    Seed 41: F1=0.9552 ROC-AUC=0.9987
-    Seed 42: F1=0.8889 ROC-AUC=0.9983
-    Seed 43: F1=0.9552 ROC-AUC=0.9968
-  ✓ Best: epochs_40                      F1=0.9552 (+2.15%)
+    Seed 41: F1=0.8667 ROC-AUC=0.9526
+    Seed 42: F1=0.9394 ROC-AUC=0.9979
+    Seed 43: F1=0.9231 ROC-AUC=0.9940
+    Seed 44: F1=0.8923 ROC-AUC=0.9851
+    Seed 45: F1=0.9032 ROC-AUC=0.9865
+    Mean: F1=0.9049 ± 0.0280 ROC-AUC=0.9832 ± 0.0179
+  ✓ Best: epochs_80                      Mean F1=0.9062 (+0.00%)
 
 LEARNING RATE
   ----------------------------------------------------------------------------
   learning_rate_1e-04
-    Seed 41: F1=0.9254 ROC-AUC=0.9991
-    Seed 42: F1=0.9524 ROC-AUC=0.9988
-    Seed 43: F1=0.9552 ROC-AUC=0.9990
+    Seed 41: F1=0.8214 ROC-AUC=0.9710
+    Seed 42: F1=0.9524 ROC-AUC=0.9960
+    Seed 43: F1=0.9062 ROC-AUC=0.9947
+    Seed 44: F1=0.8615 ROC-AUC=0.9834
+    Seed 45: F1=0.9000 ROC-AUC=0.9885
+    Mean: F1=0.8883 ± 0.0494 ROC-AUC=0.9867 ± 0.0101
   learning_rate_5e-04
-    Seed 41: F1=0.9254 ROC-AUC=0.9981
-    Seed 42: F1=0.9143 ROC-AUC=0.9990
-    Seed 43: F1=0.9552 ROC-AUC=0.9966
+    Seed 41: F1=0.8889 ROC-AUC=0.9538
+    Seed 42: F1=0.9394 ROC-AUC=0.9974
+    Seed 43: F1=0.9206 ROC-AUC=0.9917
+    Seed 44: F1=0.8788 ROC-AUC=0.9839
+    Seed 45: F1=0.9032 ROC-AUC=0.9868
+    Mean: F1=0.9062 ± 0.0243 ROC-AUC=0.9827 ± 0.0170
   learning_rate_1e-03
-    Seed 41: F1=0.9524 ROC-AUC=0.9983
-    Seed 42: F1=0.9524 ROC-AUC=0.9974
-    Seed 43: F1=0.9552 ROC-AUC=0.9993
-  ✓ Best: learning_rate_1e-03            F1=0.9552 (+3.02%)
+    Seed 41: F1=0.9180 ROC-AUC=0.9559
+    Seed 42: F1=0.9355 ROC-AUC=0.9993
+    Seed 43: F1=0.8615 ROC-AUC=0.9928
+    Seed 44: F1=0.9032 ROC-AUC=0.9894
+    Seed 45: F1=0.9355 ROC-AUC=0.9932
+    Mean: F1=0.9108 ± 0.0306 ROC-AUC=0.9861 ± 0.0173
+  ✓ Best: learning_rate_1e-03            Mean F1=0.9108 (+0.50%)
 
-NOISE SCALE
+NOISE SCALE SENSITIVITY
   ----------------------------------------------------------------------------
   noise_scale_2
-    Seed 41: F1=0.3922 ROC-AUC=0.8843
-    Seed 42: F1=0.3115 ROC-AUC=0.8826
-    Seed 43: F1=0.4681 ROC-AUC=0.8656
+    Seed 41: F1=0.3019 ROC-AUC=0.7880
+    Seed 42: F1=0.3529 ROC-AUC=0.8764
+    Seed 43: F1=0.3273 ROC-AUC=0.8487
+    Seed 44: F1=0.2917 ROC-AUC=0.8353
+    Seed 45: F1=0.0513 ROC-AUC=0.8017
+    Mean: F1=0.2650 ± 0.1218 ROC-AUC=0.8300 ± 0.0357
   noise_scale_4
-    Seed 41: F1=0.8254 ROC-AUC=0.9879
-    Seed 42: F1=0.7458 ROC-AUC=0.9903
-    Seed 43: F1=0.8571 ROC-AUC=0.9822
+    Seed 41: F1=0.6538 ROC-AUC=0.9182
+    Seed 42: F1=0.8710 ROC-AUC=0.9846
+    Seed 43: F1=0.7636 ROC-AUC=0.9663
+    Seed 44: F1=0.6909 ROC-AUC=0.9553
+    Seed 45: F1=0.7636 ROC-AUC=0.9473
+    Mean: F1=0.7486 ± 0.0833 ROC-AUC=0.9543 ± 0.0246
   noise_scale_6
-    Seed 41: F1=0.9254 ROC-AUC=0.9981
-    Seed 42: F1=0.9143 ROC-AUC=0.9990
-    Seed 43: F1=0.9552 ROC-AUC=0.9966
+    Seed 41: F1=0.8889 ROC-AUC=0.9538
+    Seed 42: F1=0.9394 ROC-AUC=0.9974
+    Seed 43: F1=0.9206 ROC-AUC=0.9917
+    Seed 44: F1=0.8788 ROC-AUC=0.9839
+    Seed 45: F1=0.9032 ROC-AUC=0.9868
+    Mean: F1=0.9062 ± 0.0243 ROC-AUC=0.9827 ± 0.0170
   noise_scale_8
-    Seed 41: F1=0.9552 ROC-AUC=0.9992
-    Seed 42: F1=0.9552 ROC-AUC=0.9997
-    Seed 43: F1=0.9552 ROC-AUC=0.9985
+    Seed 41: F1=0.9206 ROC-AUC=0.9793
+    Seed 42: F1=0.9394 ROC-AUC=0.9999
+    Seed 43: F1=0.9538 ROC-AUC=0.9989
+    Seed 44: F1=0.9524 ROC-AUC=0.9922
+    Seed 45: F1=0.9552 ROC-AUC=0.9954
+    Mean: F1=0.9443 ± 0.0147 ROC-AUC=0.9931 ± 0.0083
   noise_scale_10
-    Seed 41: F1=0.9552 ROC-AUC=0.9999
-    Seed 42: F1=0.9552 ROC-AUC=0.9999
-    Seed 43: F1=0.9552 ROC-AUC=0.9998
-  ✓ Best: noise_scale_8                  F1=0.9552 (+3.23%)
-
-INJECTION FRACTION
-  ----------------------------------------------------------------------------
-  injection_frac_0.01
-    Seed 41: F1=0.8667 ROC-AUC=0.9901
-    Seed 42: F1=0.8235 ROC-AUC=0.9976
-    Seed 43: F1=0.8667 ROC-AUC=0.9959
-  injection_frac_0.02
-    Seed 41: F1=0.9254 ROC-AUC=0.9981
-    Seed 42: F1=0.9143 ROC-AUC=0.9990
-    Seed 43: F1=0.9552 ROC-AUC=0.9966
-  injection_frac_0.05
-    Seed 41: F1=0.9571 ROC-AUC=0.9985
-    Seed 42: F1=0.9341 ROC-AUC=0.9972
-    Seed 43: F1=0.9571 ROC-AUC=0.9977
-  injection_frac_0.10
-    Seed 41: F1=0.9568 ROC-AUC=0.9887
-    Seed 42: F1=0.9375 ROC-AUC=0.9894
-    Seed 43: F1=0.9563 ROC-AUC=0.9883
-  ✓ Best: injection_frac_0.10            F1=0.9571 (+2.68%)
+    Seed 41: F1=0.9375 ROC-AUC=0.9939
+    Seed 42: F1=0.9706 ROC-AUC=1.0000
+    Seed 43: F1=0.9565 ROC-AUC=1.0000
+    Seed 44: F1=0.9552 ROC-AUC=0.9967
+    Seed 45: F1=0.9697 ROC-AUC=0.9995
+    Mean: F1=0.9579 ± 0.0135 ROC-AUC=0.9980 ± 0.0027
+  ✓ Best: noise_scale_10                 Mean F1=0.9579 (+5.71%)
 
 
 ================================================================================
@@ -221,43 +292,45 @@ KEY FINDINGS & RECOMMENDATIONS
 ================================================================================
 
 Best Overall Configuration:
-  Variant: bottleneck_16
-  Category: bottleneck_dimension
-  bottleneck_dim: 16
+  Variant: noise_scale_10
+  Category: noise_scale_sensitivity
+  bottleneck_dim: 4
   depth: 3
   dropout_rate: 0.1
   activation: relu
   batch_size: 16
   epochs: 80
   learning_rate: 0.0005
-  noise_scale: 6.0
+  noise_scale: 10.0
   injection_frac: 0.02
-  threshold: 0.6117029651415619
-  Best Seed: 41
-  F1 Score: 0.9552
-  ROC-AUC: 0.9992
-  Improvement over baseline: +3.23%
+  threshold: 1.683552908927613
+  validation_f1: 0.9743589743589742
+  n_validation_anomalies: 19.0
+  n_test_anomalies: 33.0
+  Mean F1 Score: 0.9579
+  Mean ROC-AUC: 0.9980
+  Improvement over baseline: +5.71%
 
 Baseline Performance by Seed:
-  Seed 41: F1=0.9254, ROC-AUC=0.9981
-  Seed 42: F1=0.9143, ROC-AUC=0.9990
-  Seed 43: F1=0.9552, ROC-AUC=0.9966
-  ✓ Best Seed: 43 (F1=0.9552)
+  Seed 41: F1=0.8889, ROC-AUC=0.9538
+  Seed 42: F1=0.9394, ROC-AUC=0.9974
+  Seed 43: F1=0.9206, ROC-AUC=0.9917
+  Seed 44: F1=0.8788, ROC-AUC=0.9839
+  Seed 45: F1=0.9032, ROC-AUC=0.9868
 
-Component Sensitivity Ranking (by max F1 improvement):
-  bottleneck_dimension      +3.23%
-  network_depth             +2.05%
-  dropout_rate              +2.15%
-  activation_function       +3.23%
-  batch_size                +3.23%
-  epochs                    +2.15%
-  learning_rate             +3.02%
-  noise_scale               +3.23%
-  injection_fraction        +2.68%
+Component Sensitivity Ranking (by mean F1 improvement):
+  bottleneck_dimension      +2.08%
+  network_depth             +0.00%
+  dropout_rate              +0.34%
+  activation_function       +0.11%
+  batch_size                +0.00%
+  epochs                    +0.00%
+  learning_rate             +0.50%
+  noise_scale_sensitivity   +5.71%
 
 
 Recommendations:
-  1. Consider configurations that significantly improve F1 (>2% improvement)
+  1. Compare configurations using mean performance across all seeds
   2. Balance F1, Precision, and Recall based on use case requirements
-  3. Monitor for overfitting when using reduced feature sets
-  4. Test recommended configurations on hold-out test set before deployment
+  3. Treat noise scale as anomaly severity rather than model tuning
+  4. Avoid selecting configurations based on a single random seed

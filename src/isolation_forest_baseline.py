@@ -147,19 +147,18 @@ def get_isolation_forest_threshold(
 
 def optimize_threshold_if(
     model: IsolationForest,
-    X_test: np.ndarray,
+    X_val: np.ndarray,
     y_true: np.ndarray,
     q_range: tuple = (0.05, 0.999),
     n_grid: int = 400
 ) -> dict:
-    """Optimize IF threshold by maximizing F1 on test set.
-    
+    """ Select the IF threshold by maximizing F1 on validation data.
     Searches a grid of thresholds across the specified quantile range
     to find the threshold that maximizes F1 score.
     
     Args:
         model: Trained IsolationForest model
-        X_test: Test data
+        X_val: Validation data
         y_true: True labels (1=normal, -1=anomaly)
         q_range: Quantile range for threshold search (default: 5th to 99.9th percentile)
         n_grid: Number of thresholds to test (default: 400 for fine granularity)
@@ -171,7 +170,7 @@ def optimize_threshold_if(
         - precision: Precision at optimal threshold
         - recall: Recall at optimal threshold
     """
-    scores = score_anomalies_if(model, X_test)
+    scores = score_anomalies_if(model, X_val)
     
     # Generate threshold candidates across quantile range
     qs = np.linspace(q_range[0], q_range[1], n_grid)

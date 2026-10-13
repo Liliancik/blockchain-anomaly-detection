@@ -30,8 +30,6 @@ def build_autoencoder(input_dim: int, bottleneck_dim: int = 4) -> keras.Model:
     - ReLU activations: Non-linear transformations for pattern learning
     - Linear output: Preserves actual feature values in reconstruction
     
-    Performance: Achieves ~99.9% detection accuracy on student data
-    
     Args:
         input_dim: Number of input features (e.g., 55 for student performance)
         bottleneck_dim: Compression dimension (smaller = deeper compression)
@@ -84,6 +82,7 @@ def build_autoencoder(input_dim: int, bottleneck_dim: int = 4) -> keras.Model:
 
 def train_detector(
     X_train: np.ndarray,
+    X_val: np.ndarray = None,
     contamination: float = 0.02,
     bottleneck_dim: int = 4,
     epochs: int = 80,
@@ -146,17 +145,24 @@ def train_detector(
     # Train model
     # Target = X_train (unsupervised: learn to reconstruct own input)
     # shuffle=True: randomize batch order for better generalization
-    # validation_split=0.15: hold out 15% of training data for validation
-    # verbose=0: suppress output (clean console)
+    if X_val is not None:
+        validation_kwargs = {
+            "validation_data": (X_val, X_val)
+        }
+    else:
+        validation_kwargs = {
+            "validation_split": val_split
+        }
+
     history = model.fit(
         X_train,
         X_train,
         epochs=epochs,
         batch_size=batch_size,
         shuffle=True,
-        validation_split=val_split,
         callbacks=callbacks,
         verbose=0,
+        **validation_kwargs,
     )
 
     # Compute reconstruction error on training set
